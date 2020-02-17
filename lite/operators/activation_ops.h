@@ -32,6 +32,11 @@ class ActivationOp : public OpLite {
 
   void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase* param) override {
+    printf("act op set param done\n");
+    param_ = *dynamic_cast<operators::ActivationParam*>(param);
+  }
+
   std::string DebugString() const override { return "activation_op"; }
 
  private:

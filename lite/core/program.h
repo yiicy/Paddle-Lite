@@ -103,6 +103,7 @@ struct Instruction {
   friend STL::ostream& operator<<(STL::ostream& os, const Instruction& other);
 
   const OpLite* op() const { return op_.get(); }
+  OpLite* mutable_op() const { return op_.get(); }
   const KernelBase* kernel() const { return kernel_.get(); }
   KernelBase* mutable_kernel() { return kernel_.get(); }
 

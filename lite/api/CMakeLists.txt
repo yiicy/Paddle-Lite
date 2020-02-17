@@ -73,6 +73,22 @@ else()
     endif()
 endif()
 
+
+    add_library(lite_compute_lib SHARED "")
+    target_sources(lite_compute_lib PUBLIC ${__lite_cc_files} compute_api.cc)
+    set_target_properties(lite_compute_lib PROPERTIES COMPILE_FLAGS "-flto -fdata-sections")
+    add_dependencies(lite_compute_lib op_list_h kernel_list_h)
+
+    # lite_cc_library(lite_compute_lib
+    #     SRCS compute_api.cc 
+    #     DEPS ${light_lib_DEPS}
+    #     ${ops}
+    #     ARM_DEPS ${arm_kernels}
+    #     CV_DEPS paddle_cv_arm
+    #     NPU_DEPS ${npu_kernels}
+    #     CL_DEPS ${opencl_kernels}
+    #     FPGA_DEPS ${fpga_kernels})
+
 if (WITH_TESTING)
     lite_cc_library(lite_api_test_helper SRCS lite_api_test_helper.cc
       DEPS scope optimizer target_wrapper_host model_parser program
@@ -422,6 +438,18 @@ if(NOT IOS)
         CL_DEPS ${opencl_kernels}
         BM_DEPS ${bm_kernels}
         RKNPU_DEPS ${rknpu_kernels}
+        FPGA_DEPS ${fpga_kernels}
+        X86_DEPS ${x86_kernels}
+        CUDA_DEPS ${cuda_kernels})
+
+    lite_cc_binary(test_compute_api SRCS compute_api_test.cc DEPS lite_compute_lib gflags utils
+        ${ops} ${host_kernels}
+        ARM_DEPS ${arm_kernels}
+        CV_DEPS paddle_cv_arm
+        NPU_DEPS ${npu_kernels}
+        XPU_DEPS ${xpu_kernels}
+        CL_DEPS ${opencl_kernels}
+        BM_DEPS ${bm_kernels}
         FPGA_DEPS ${fpga_kernels}
         X86_DEPS ${x86_kernels}
         CUDA_DEPS ${cuda_kernels})

@@ -86,7 +86,10 @@ class PoolOpLite : public OpLite {
 
     return true;
   }
-
+  void SetParam(ParamBase *param) override {
+    printf("pool op set param done\n");
+    param_ = *dynamic_cast<operators::PoolParam *>(param);
+  }
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
   std::string DebugString() const override { return "pool2d"; }

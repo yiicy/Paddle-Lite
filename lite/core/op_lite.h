@@ -62,6 +62,7 @@ class OpLite : public Registry {
     VLOG(5) << "valid places " << valid_places_.size();
     valid_places_ = places;
   }
+  virtual void SetParam(operators::ParamBase *param) {}
   const std::vector<Place> &valid_places() const { return valid_places_; }
   // Check the shape.
   virtual bool CheckShape() const { return true; }
