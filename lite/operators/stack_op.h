@@ -36,6 +36,12 @@ class StackOp : public OpLite {
   bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "stack set param done";
+    param_ = *dynamic_cast<operators::StackParam *>(param);
+  }
+
   std::string DebugString() const override { return "stack"; }
 
  private:

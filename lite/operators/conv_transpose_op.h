@@ -40,6 +40,11 @@ class ConvTransposeOpLite : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "conv_transpose op set param done";
+    param_ = *dynamic_cast<operators::ConvParam *>(param);
+  }
+
   std::string DebugString() const override { return "conv_transpose"; }
 
  private:

@@ -38,6 +38,11 @@ class GenerateProposalsOpLite : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "generate_proposals op set param done";
+    param_ = *dynamic_cast<operators::GenerateProposalsParam *>(param);
+  }
+
   std::string DebugString() const override { return "generate_proposals"; }
 
  private:

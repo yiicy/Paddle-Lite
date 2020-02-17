@@ -36,6 +36,12 @@ class InstanceNormOp : public OpLite {
   bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "instance_norm op set param done";
+    param_ = *dynamic_cast<operators::InstanceNormParam *>(param);
+  }
+
   std::string DebugString() const override { return "instance_norm"; }
 
  private:

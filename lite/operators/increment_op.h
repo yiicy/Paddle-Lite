@@ -36,6 +36,11 @@ class IncrementOp : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "increment op set param done";
+    param_ = *dynamic_cast<operators::IncrementParam *>(param);
+  }
+
   std::string DebugString() const override { return "increment"; }
 
  private:

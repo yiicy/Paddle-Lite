@@ -36,6 +36,11 @@ class WriteToArrayOp : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "write_to_array set param done";
+    param_ = *dynamic_cast<operators::WriteToArrayParam *>(param);
+  }
+
   std::string DebugString() const override { return "write_to_array"; }
 
  private:

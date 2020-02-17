@@ -36,6 +36,11 @@ class CastOp : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "cast op set param done";
+    param_ = *dynamic_cast<operators::CastParam *>(param);
+  }
+
   std::string DebugString() const override { return "cast"; }
 
  private:

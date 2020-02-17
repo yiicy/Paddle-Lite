@@ -38,6 +38,11 @@ class CollectFpnProposalsOpLite : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "collect_fpn_proposals op set param done";
+    param_ = *dynamic_cast<operators::CollectFpnProposalsParam *>(param);
+  }
+
   std::string DebugString() const override { return "collect_fpn_proposals"; }
 
  private:

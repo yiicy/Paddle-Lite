@@ -36,6 +36,11 @@ class NormOp : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "norm op set param done";
+    param_ = *dynamic_cast<operators::NormParam *>(param);
+  }
+
   std::string DebugString() const override { return "norm"; }
 
  private:

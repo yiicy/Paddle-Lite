@@ -36,6 +36,11 @@ class IsEmptyOp : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "is_empty op set param done";
+    param_ = *dynamic_cast<operators::IsEmptyParam *>(param);
+  }
+
   std::string DebugString() const override { return "binary logical"; }
 
  private:

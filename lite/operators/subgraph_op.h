@@ -41,6 +41,11 @@ class SubgraphOp : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "subgraph set param done";
+    param_ = *dynamic_cast<operators::SubgraphParam *>(param);
+  }
+
   std::string DebugString() const override { return "subgraph"; }
 
   void SetSubBlock(cpp::BlockDesc *desc) { param_.sub_block_desc = desc; }

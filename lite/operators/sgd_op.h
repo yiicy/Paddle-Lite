@@ -37,6 +37,11 @@ class SGDOpLite : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "sgd set param done";
+    param_ = *dynamic_cast<operators::SGDParam *>(param);
+  }
+
   bool AttachImpl(const cpp::OpDesc &op_desc, lite::Scope *scope) override;
 
   std::string DebugString() const override { return "sgd"; }

@@ -35,6 +35,12 @@ class GRUOpLite : public OpLite {
   bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "GRU op set param done";
+    param_ = *dynamic_cast<operators::GRUParam *>(param);
+  }
+
   std::string DebugString() const override { return "GRU"; }
 
  private:

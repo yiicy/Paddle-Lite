@@ -37,6 +37,11 @@ class RoiAlignOpLite : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "reshape set param done";
+    param_ = *dynamic_cast<operators::ReshapeParam *>(param);
+  }
+
   std::string DebugString() const override { return "roi_align"; }
 
  private:

@@ -16,10 +16,24 @@
 #include <string>
 #include "lite/api/paddle_place.h"
 #include "lite/operators/op_params.h"
-using OpHandle = void*;
 
 namespace paddle {
 namespace lite {
+
+//! one OpHandle will hold one kernel impl,
+//! if you want to use two operators with the
+//! same type, you must create two OpHandle
+//! for example:
+//! using namespace paddle::lite;
+//! ComputeEngine ce;
+//! OpHandle conv0_handle = ce.CreateOperator("conv2d");
+//! OpHandle conv1_handle = ce.CreateOperator("conv2d");
+//! ... ...
+//! ce.ReleaseOpHandle(conv0_handle);
+//! ce.ReleaseOpHandle(conv1_handle);
+using OpHandle = void*;
+
+// now ComputeEngine only support Target = Arm, Precison = kFloat
 template <TargetType Type>
 class ComputeEngine {
  public:

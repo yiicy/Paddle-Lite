@@ -35,6 +35,12 @@ class FlattenOp : public OpLite {
   bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "flatten op set param done";
+    param_ = *dynamic_cast<operators::ReshapeParam *>(param);
+  }
+
   std::string DebugString() const override { return "flatten"; }
 
  protected:
@@ -54,6 +60,7 @@ class Flatten2Op : public FlattenOp {
   bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+
   std::string DebugString() const override { return "flatten2"; }
 };
 

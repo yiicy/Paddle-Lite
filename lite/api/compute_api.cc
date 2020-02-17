@@ -35,7 +35,6 @@ OpHandle ComputeEngine<TARGET(kARM)>::CreateOperator(std::string op_type,
   auto kernels = op->CreateKernels({place});
   CHECK_GT(kernels.size(), 0) << "no kernel found for " << op_type;
   LOG(INFO) << "Create Kernels Success";
-  // filter out a kernel
   auto& kernel = kernels.front();
   kernel->SetContext(ContextScheduler::Global().NewContext(kernel->target()));
   LOG(INFO) << "SetContext Success";

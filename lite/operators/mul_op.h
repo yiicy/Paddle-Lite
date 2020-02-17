@@ -60,6 +60,11 @@ class MulOpLite : public OpLite {
     return true;
   }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "mul op set param done";
+    param_ = *dynamic_cast<operators::MulParam *>(param);
+  }
+
   std::string DebugString() const override { return "mul"; }
 
  private:

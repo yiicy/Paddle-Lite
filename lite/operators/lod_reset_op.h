@@ -36,6 +36,11 @@ class LodResetOp : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "lod_reset op set param done";
+    param_ = *dynamic_cast<operators::LodResetParam *>(param);
+  }
+
   std::string DebugString() const override { return "lod_reset"; }
 
  private:

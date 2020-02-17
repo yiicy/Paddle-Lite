@@ -30,6 +30,12 @@ class VarConv2dOp : public OpLite {
   bool InferShapeImpl() const override;
   bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "var_conv_2d set param done";
+    param_ = *dynamic_cast<operators::VarConv2DParam *>(param);
+  }
+
   std::string DebugString() const override { return "var_conv_2d"; }
 
  private:

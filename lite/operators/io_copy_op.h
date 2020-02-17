@@ -28,6 +28,11 @@ class IoCopyOp : public OpLite {
   bool Run() override;
   std::string DebugString() const override;
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "iocopy op set param done";
+    param_ = *dynamic_cast<operators::IoCopyParam *>(param);
+  }
+
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
  protected:

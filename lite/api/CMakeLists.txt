@@ -54,7 +54,7 @@ if ((NOT LITE_ON_TINY_PUBLISH) AND (LITE_WITH_CUDA OR LITE_WITH_X86 OR LITE_WITH
 else()
     if ((ARM_TARGET_OS STREQUAL "android") OR (ARM_TARGET_OS STREQUAL "armlinux"))
         add_library(paddle_light_api_shared SHARED "")
-        target_sources(paddle_light_api_shared PUBLIC ${__lite_cc_files} paddle_api.cc light_api.cc light_api_impl.cc)
+        target_sources(paddle_light_api_shared PUBLIC ${__lite_cc_files} paddle_api.cc compute_api.cc light_api.cc light_api_impl.cc)
         set(TARGET_COMIPILE_FLAGS "-fdata-sections")
         if (NOT (ARM_TARGET_LANG STREQUAL "clang")) #gcc
             set(TARGET_COMIPILE_FLAGS "${TARGET_COMIPILE_FLAGS} -flto")
@@ -78,16 +78,6 @@ endif()
     target_sources(lite_compute_lib PUBLIC ${__lite_cc_files} compute_api.cc)
     set_target_properties(lite_compute_lib PROPERTIES COMPILE_FLAGS "-flto -fdata-sections")
     add_dependencies(lite_compute_lib op_list_h kernel_list_h)
-
-    # lite_cc_library(lite_compute_lib
-    #     SRCS compute_api.cc 
-    #     DEPS ${light_lib_DEPS}
-    #     ${ops}
-    #     ARM_DEPS ${arm_kernels}
-    #     CV_DEPS paddle_cv_arm
-    #     NPU_DEPS ${npu_kernels}
-    #     CL_DEPS ${opencl_kernels}
-    #     FPGA_DEPS ${fpga_kernels})
 
 if (WITH_TESTING)
     lite_cc_library(lite_api_test_helper SRCS lite_api_test_helper.cc

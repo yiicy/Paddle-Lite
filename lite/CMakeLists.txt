@@ -309,10 +309,22 @@ if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND LITE_WITH_ARM)
                     COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx"
                     COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
                     COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
+                    COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/api"
+                    COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/core"
+                    COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/operators"
+                    COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/model_parser/cpp"
+                    COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/utils/replace_stl"
                     COMMAND cp "${CMAKE_SOURCE_DIR}/lite/api/paddle_*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
                     COMMAND cp "${CMAKE_BINARY_DIR}/libpaddle_api_light_bundled.a" "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
                     COMMAND cp "${CMAKE_BINARY_DIR}/lite/api/libpaddle_light_api_shared.so" "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
                     COMMAND cp "${CMAKE_SOURCE_DIR}/lite/utils/cv/paddle_*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
+                    COMMAND cp "${CMAKE_SOURCE_DIR}/lite/utils/*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/utils"
+                    COMMAND cp "${CMAKE_SOURCE_DIR}/lite/api/*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/api"
+                    COMMAND cp "${CMAKE_SOURCE_DIR}/lite/core/*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/core"
+                    COMMAND cp "${CMAKE_SOURCE_DIR}/lite/operators/*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/operators"
+                    COMMAND cp "${CMAKE_SOURCE_DIR}/lite/model_parser/*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/model_parser"
+                    COMMAND cp "${CMAKE_SOURCE_DIR}/lite/model_parser/cpp/*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/model_parser/cpp"
+                    COMMAND cp "${CMAKE_SOURCE_DIR}/lite/utils/replace_stl/*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/utils/replace_stl"
                     )
                 add_dependencies(tiny_publish_cxx_lib paddle_light_api_shared)
                 add_dependencies(tiny_publish_cxx_lib bundle_light_api)

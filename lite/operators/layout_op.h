@@ -30,6 +30,11 @@ class LayoutOp : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "layout op set param done";
+    param_ = *dynamic_cast<operators::LayoutParam *>(param);
+  }
+
  protected:
   bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
 

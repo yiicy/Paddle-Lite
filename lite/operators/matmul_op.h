@@ -39,6 +39,11 @@ class MatMulOpLite : public OpLite {
 
   bool AttachImpl(const cpp::OpDesc &op_desc, lite::Scope *scope) override;
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "matmul op set param done";
+    param_ = *dynamic_cast<operators::MatMulParam *>(param);
+  }
+
   std::string DebugString() const override { return "matmul"; }
 
  private:

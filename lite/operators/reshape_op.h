@@ -35,6 +35,12 @@ class ReshapeOp : public OpLite {
   bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "reshape set param done";
+    param_ = *dynamic_cast<operators::ReshapeParam *>(param);
+  }
+
   std::string DebugString() const override { return "reshape"; }
 
  protected:

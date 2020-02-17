@@ -48,6 +48,11 @@ class CalibOpLite : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "calib op set param done";
+    param_ = *dynamic_cast<operators::CalibParam *>(param);
+  }
+
   std::string DebugString() const override { return "calib"; }
 
  private:

@@ -38,6 +38,11 @@ class DistributeFpnProposalsOpLite : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "distribute_fpn_proposals op set param done";
+    param_ = *dynamic_cast<operators::DistributeFpnProposalsParam *>(param);
+  }
+
   std::string DebugString() const override {
     return "distribute_fpn_proposals";
   }

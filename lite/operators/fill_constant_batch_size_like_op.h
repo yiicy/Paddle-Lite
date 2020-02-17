@@ -37,6 +37,12 @@ class FillConstantBatchSizeLikeOp : public OpLite {
   bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "fill_constant_batch_size_like op set param done";
+    param_ = *dynamic_cast<operators::FillConstantBatchSizeLikeParam *>(param);
+  }
+
   std::string DebugString() const override {
     return "fill_constant_batch_size_like";
   }

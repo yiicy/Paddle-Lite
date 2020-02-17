@@ -32,6 +32,12 @@ class SequencePoolConcatOp : public OpLite {
   bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "sequence_pool_concat set param done";
+    param_ = *dynamic_cast<operators::SequencePoolConcatParam *>(param);
+  }
+
   std::string DebugString() const override { return "sequence_pool_concat"; }
 
  private:

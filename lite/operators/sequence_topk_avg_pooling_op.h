@@ -36,6 +36,12 @@ class SequenceTopkAvgPoolingOpLite : public OpLite {
   bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "sequence_topk_avg_pooling set param done";
+    param_ = *dynamic_cast<operators::SequenceTopkAvgPoolingParam *>(param);
+  }
+
   std::string DebugString() const override {
     return "sequence_topk_avg_pooling";
   }

@@ -37,6 +37,11 @@ class AssignValueOpLite : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "assign value op set param done";
+    param_ = *dynamic_cast<operators::AssignValueParam *>(param);
+  }
+
   std::string DebugString() const override { return "assign value"; }
 
  private:

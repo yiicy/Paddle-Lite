@@ -35,6 +35,11 @@ class AttentionPaddingMaskOp : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "attention_padding_mask op set param done";
+    param_ = *dynamic_cast<operators::AttentionPaddingMaskParam *>(param);
+  }
+
   std::string DebugString() const override { return "attention_padding_mask"; }
 
  private:

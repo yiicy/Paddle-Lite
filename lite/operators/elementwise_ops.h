@@ -33,6 +33,11 @@ class ElementwiseOp : public OpLite {
 
   void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase* param) override {
+    VLOG(4) << "elementwise_op op set param done";
+    param_ = *dynamic_cast<operators::ElementwiseParam*>(param);
+  }
+
   std::string DebugString() const override { return "elementwise_op"; }
 
  private:

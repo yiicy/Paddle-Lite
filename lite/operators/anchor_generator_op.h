@@ -38,6 +38,11 @@ class AnchorGeneratorOpLite : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "anchor_generator op set param done";
+    param_ = *dynamic_cast<operators::AnchorGeneratorParam *>(param);
+  }
+
   std::string DebugString() const override { return "anchor_generator"; }
 
  private:

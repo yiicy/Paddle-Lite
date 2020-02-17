@@ -34,6 +34,11 @@ class DropoutOp : public OpLite {
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
   bool AttachImpl(const cpp::OpDesc& op_desc, lite::Scope* scope) override;
 
+  void SetParam(ParamBase* param) override {
+    VLOG(4) << "dropout op set param done";
+    param_ = *dynamic_cast<operators::DropoutParam*>(param);
+  }
+
   std::string DebugString() const override { return "dropout"; }
 
  private:

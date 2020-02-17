@@ -38,6 +38,11 @@ class MatchMatrixTensorOpLite : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "match_matrix_tensor op set param done";
+    param_ = *dynamic_cast<operators::MatchMatrixTensorParam *>(param);
+  }
+
   std::string DebugString() const override { return "match_matrix_tensor"; }
 
  private:

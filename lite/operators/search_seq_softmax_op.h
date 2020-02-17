@@ -36,6 +36,12 @@ class SearchSeqSoftmaxOp : public OpLite {
   bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "search_seq_softmax_op set param done";
+    param_ = *dynamic_cast<operators::SoftmaxParam *>(param);
+  }
+
   std::string DebugString() const override { return "search_seq_softmax_op"; }
 
  private:

@@ -37,6 +37,11 @@ class MergeLodTensorOpLite : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "merge_lod_tensor op set param done";
+    param_ = *dynamic_cast<operators::MergeLodTensorParam *>(param);
+  }
+
   std::string DebugString() const override { return "merge_lod_tensor"; }
 
  private:

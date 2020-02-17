@@ -131,7 +131,7 @@ class ConvOpLite : public OpLite {
     return true;
   }
   void SetParam(ParamBase* param) override {
-    printf("conv2d op set param done\n");
+    VLOG(4) << "conv2d op set param done";
     param_ = *dynamic_cast<operators::ConvParam*>(param);
   }
   void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }

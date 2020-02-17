@@ -36,6 +36,11 @@ class SequenceSoftmaxOp : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
+  void SetParam(ParamBase *param) override {
+    VLOG(4) << "im2suquence set param done";
+    param_ = *dynamic_cast<operators::SequenceSoftmaxParam *>(param);
+  }
+
   std::string DebugString() const override { return "im2suquence"; }
 
  private:
