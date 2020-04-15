@@ -34,8 +34,7 @@ class ConvOpLite : public OpLite {
   explicit ConvOpLite(const std::string& type) : OpLite(type) {}
 
   bool CheckShape() const override;
-
-  bool InferShape() const override;
+  bool InferShapeImpl() const override;
 
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
   bool AttachImpl(const cpp::OpDesc& op_desc, lite::Scope* scope) override {
@@ -85,6 +84,10 @@ class ConvOpLite : public OpLite {
       if (act_type == "relu") {
         param_.activation_param.active_type = lite_api::ActivationType::kRelu;
         param_.fuse_relu = true;
+      } else if (act_type == "relu6") {
+        param_.activation_param.active_type = lite_api::ActivationType::kRelu6;
+        param_.activation_param.Relu_clipped_coef =
+            op_desc.GetAttr<float>("fuse_brelu_threshold");  // 6.f
       } else if (act_type == "leaky_relu") {
         param_.activation_param.active_type =
             lite_api::ActivationType::kLeakyRelu;

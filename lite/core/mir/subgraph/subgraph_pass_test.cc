@@ -15,11 +15,9 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include "lite/api/paddle_api.h"
-#include "lite/api/paddle_use_kernels.h"
-#include "lite/api/paddle_use_ops.h"
-#include "lite/api/paddle_use_passes.h"
 #include "lite/api/test_helper.h"
 #include "lite/utils/cp_logging.h"
+#include "lite/utils/string.h"
 
 DEFINE_string(model_file, "", "model file path of combined protobuf model");
 DEFINE_string(params_file, "", "params file path of combined protobuf model");
@@ -34,43 +32,17 @@ namespace lite {
 // The helper functions for loading and running model from command line and
 // verifying output data
 std::vector<std::string> TypeParsing(std::string text) {
-  std::vector<std::string> types;
-  while (!text.empty()) {
-    size_t index = text.find_first_of(":");
-    std::string type = text.substr(0, index);
-    VLOG(3) << type;
-    types.push_back(type);
-    if (index == std::string::npos) {
-      break;
-    } else {
-      text = text.substr(index + 1);
-    }
-  }
-  return types;
+  return Split(text, ":");
 }
 
 std::vector<std::vector<int64_t>> ShapeParsing(std::string text) {
   std::vector<std::vector<int64_t>> shapes;
-  while (!text.empty()) {
-    size_t index = text.find_first_of(":");
-    std::string slice = text.substr(0, index);
-    std::vector<int64_t> shape;
-    while (!slice.empty()) {
-      size_t index = slice.find_first_of(",");
-      int d = atoi(slice.substr(0, index).c_str());
-      VLOG(3) << d;
-      shape.push_back(d);
-      if (index == std::string::npos) {
-        break;
-      } else {
-        slice = slice.substr(index + 1);
-      }
-    }
-    shapes.push_back(shape);
-    if (index == std::string::npos) {
-      break;
-    } else {
-      text = text.substr(index + 1);
+  std::vector<std::string> shape_strings = Split(text, ":");
+  shapes.resize(shape_strings.size());
+  for (int i = 0; i < shape_strings.size(); i++) {
+    std::vector<std::string> shape_nums = Split(shape_strings[i], ",");
+    for (auto shape_num : shape_nums) {
+      shapes[i].push_back(atoi(shape_num.c_str()));
     }
   }
   return shapes;
@@ -157,7 +129,7 @@ std::shared_ptr<lite_api::PaddlePredictor> TestModel(
                                 lite_api::LiteModelType::kNaiveBuffer);
   // Load optimized model
   lite_api::MobileConfig mobile_config;
-  mobile_config.set_model_dir(optimized_model_dir);
+  mobile_config.set_model_from_file(optimized_model_dir + ".nb");
   mobile_config.set_power_mode(lite_api::PowerMode::LITE_POWER_HIGH);
   mobile_config.set_threads(1);
   predictor = lite_api::CreatePaddlePredictor(mobile_config);
@@ -203,12 +175,12 @@ TEST(Subgraph, generate_model_and_check_precision) {
                                  valid_places,
                                  input_tensor_shape,
                                  input_tensor_type,
-                                 FLAGS_optimized_model_dir + "/ref_opt_model");
+                                 FLAGS_optimized_model_dir + "_ref_opt_model");
 // Generate and run optimized model on NPU/XPU as the target predictor
 #ifdef LITE_WITH_NPU
   valid_places.push_back(lite_api::Place{TARGET(kNPU), PRECISION(kFloat)});
 #endif
-#ifdef LITE_WITH_XPU
+#ifdef LITE_WITH_XTCL
   valid_places.push_back(lite_api::Place{TARGET(kXPU), PRECISION(kFloat)});
 #endif
   auto tar_predictor = TestModel(FLAGS_model_dir,
@@ -217,7 +189,7 @@ TEST(Subgraph, generate_model_and_check_precision) {
                                  valid_places,
                                  input_tensor_shape,
                                  input_tensor_type,
-                                 FLAGS_optimized_model_dir + "/tar_opt_model");
+                                 FLAGS_optimized_model_dir + "_tar_opt_model");
   // Check the difference of the output tensors between reference predictor and
   // target predictor
   CheckOutputTensors(tar_predictor, ref_predictor, output_tensor_type);

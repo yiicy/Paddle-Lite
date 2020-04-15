@@ -82,8 +82,8 @@ void neon_mean_scale(const float* din,
   }
   for (; i < size; i++) {
     *(dout_c0++) = (*(din++) - mean[0]) * scale[0];
-    *(dout_c0++) = (*(din++) - mean[1]) * scale[1];
-    *(dout_c0++) = (*(din++) - mean[2]) * scale[2];
+    *(dout_c1++) = (*(din++) - mean[1]) * scale[1];
+    *(dout_c2++) = (*(din++) - mean[2]) * scale[2];
   }
 }
 
@@ -162,10 +162,10 @@ std::vector<Object> detect_object(const float* data,
   return rect_out;
 }
 
-void RunModel(std::string model_dir, std::string img_path) {
+void RunModel(std::string model_file, std::string img_path) {
   // 1. Set MobileConfig
   MobileConfig config;
-  config.set_model_dir(model_dir);
+  config.set_model_from_file(model_file);
 
   // 2. Create PaddlePredictor by MobileConfig
   std::shared_ptr<PaddlePredictor> predictor =
@@ -188,23 +188,22 @@ void RunModel(std::string model_dir, std::string img_path) {
       std::move(predictor->GetOutput(0)));
   auto* outptr = output_tensor->data<float>();
   auto shape_out = output_tensor->shape();
-  int64_t cnt = 1;
-  for (auto& i : shape_out) {
-    cnt *= i;
-  }
+  int64_t cnt = ShapeProduction(shape_out);
   auto rec_out = detect_object(outptr, static_cast<int>(cnt / 6), 0.6f, img);
-  std::string result_name =
-      img_path.substr(0, img_path.find(".")) + "_ssd_detection_result.jpg";
+  int start = img_path.find_last_of("/");
+  int end = img_path.find_last_of(".");
+  std::string img_name = img_path.substr(start + 1, end - start - 1);
+  std::string result_name = img_name + "_ssd_detection_result.jpg";
   cv::imwrite(result_name, img);
 }
 
 int main(int argc, char** argv) {
   if (argc < 3) {
-    std::cerr << "[ERROR] usage: " << argv[0] << " model_dir image_path\n";
+    std::cerr << "[ERROR] usage: " << argv[0] << " model_file image_path\n";
     exit(1);
   }
-  std::string model_dir = argv[1];
+  std::string model_file = argv[1];
   std::string img_path = argv[2];
-  RunModel(model_dir, img_path);
+  RunModel(model_file, img_path);
   return 0;
 }

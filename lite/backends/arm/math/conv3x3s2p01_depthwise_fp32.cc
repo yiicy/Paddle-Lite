@@ -91,23 +91,20 @@ void conv_depthwise_3x3s2_fp32(const float* din,
                                bool flag_bias,
                                const operators::ActivationParam act_param,
                                ARMContext* ctx) {
-  if (pad == 0) {
-    if (w_in > 7) {
-      conv_depthwise_3x3s2p0_bias(dout,
-                                  din,
-                                  weights,
-                                  bias,
-                                  flag_bias,
-                                  num,
-                                  ch_in,
-                                  h_in,
-                                  w_in,
-                                  h_out,
-                                  w_out,
-                                  act_param,
-                                  ctx);
+  bool has_active = act_param.has_active;
+  bool flag_relu = false;
+  bool relu6 = false;
+  if (has_active) {
+    if (act_param.active_type == lite_api::ActivationType::kRelu) {
+      flag_relu = true;
     } else {
-      conv_depthwise_3x3s2p0_bias_s(dout,
+      relu6 = true;
+    }
+  }
+  if (pad == 0) {
+    if (w_in > 8) {
+      if (relu6) {
+        conv_depthwise_3x3s2p0_bias(dout,
                                     din,
                                     weights,
                                     bias,
@@ -120,25 +117,57 @@ void conv_depthwise_3x3s2_fp32(const float* din,
                                     w_out,
                                     act_param,
                                     ctx);
+      } else {
+        conv_depthwise_3x3s2p0_bias_relu(dout,
+                                         din,
+                                         weights,
+                                         bias,
+                                         flag_bias,
+                                         flag_relu,
+                                         num,
+                                         ch_in,
+                                         h_in,
+                                         w_in,
+                                         h_out,
+                                         w_out,
+                                         ctx);
+      }
+    } else {
+      if (relu6) {
+        conv_depthwise_3x3s2p0_bias_s(dout,
+                                      din,
+                                      weights,
+                                      bias,
+                                      flag_bias,
+                                      num,
+                                      ch_in,
+                                      h_in,
+                                      w_in,
+                                      h_out,
+                                      w_out,
+                                      act_param,
+                                      ctx);
+      } else {
+        conv_depthwise_3x3s2p0_bias_s_relu(dout,
+                                           din,
+                                           weights,
+                                           bias,
+                                           flag_bias,
+                                           flag_relu,
+                                           num,
+                                           ch_in,
+                                           h_in,
+                                           w_in,
+                                           h_out,
+                                           w_out,
+                                           ctx);
+      }
     }
   }
   if (pad == 1) {
     if (w_in > 7) {
-      conv_depthwise_3x3s2p1_bias(dout,
-                                  din,
-                                  weights,
-                                  bias,
-                                  flag_bias,
-                                  num,
-                                  ch_in,
-                                  h_in,
-                                  w_in,
-                                  h_out,
-                                  w_out,
-                                  act_param,
-                                  ctx);
-    } else {
-      conv_depthwise_3x3s2p1_bias_s(dout,
+      if (relu6) {
+        conv_depthwise_3x3s2p1_bias(dout,
                                     din,
                                     weights,
                                     bias,
@@ -151,6 +180,51 @@ void conv_depthwise_3x3s2_fp32(const float* din,
                                     w_out,
                                     act_param,
                                     ctx);
+      } else {
+        conv_depthwise_3x3s2p1_bias_relu(dout,
+                                         din,
+                                         weights,
+                                         bias,
+                                         flag_bias,
+                                         flag_relu,
+                                         num,
+                                         ch_in,
+                                         h_in,
+                                         w_in,
+                                         h_out,
+                                         w_out,
+                                         ctx);
+      }
+    } else {
+      if (relu6) {
+        conv_depthwise_3x3s2p1_bias_s(dout,
+                                      din,
+                                      weights,
+                                      bias,
+                                      flag_bias,
+                                      num,
+                                      ch_in,
+                                      h_in,
+                                      w_in,
+                                      h_out,
+                                      w_out,
+                                      act_param,
+                                      ctx);
+      } else {
+        conv_depthwise_3x3s2p1_bias_s_relu(dout,
+                                           din,
+                                           weights,
+                                           bias,
+                                           flag_bias,
+                                           flag_relu,
+                                           num,
+                                           ch_in,
+                                           h_in,
+                                           w_in,
+                                           h_out,
+                                           w_out,
+                                           ctx);
+      }
     }
   }
 }
@@ -451,44 +525,44 @@ void conv_depthwise_3x3s2_fp32(const float* din,
                                                     \
   "blt 1f                                     \n"
 
-#define LEFT_RESULT_S2_LEAKY_RELU                        \
-  "ld1 {v22.4s}, [%[scale_ptr]]                  \n"     \
-  "cmhs v11.4s, v16.4s,  %[vzero].4s \n" /* vcgeq_u32 */ \
-                                                         \
-  "ld2  {v0.4s, v1.4s}, [%[inptr0]], #32    \n"          \
-  "ld2  {v2.4s, v3.4s}, [%[inptr1]], #32    \n"          \
-  "ld2  {v4.4s, v5.4s}, [%[inptr2]], #32    \n"          \
-                                                         \
-  "fmul v12.4s, v16.4s, v22.4s                  \n"      \
-  "fadd v17.4s, v17.4s, v13.4s                  \n"      \
-                                                         \
-  "ld2  {v6.4s, v7.4s}, [%[inptr3]], #32    \n"          \
-  "ld2  {v8.4s, v9.4s}, [%[inptr4]], #32    \n"          \
-  "ld1 {v15.4s}, [%[inptr0]]                 \n"         \
-                                                         \
-  "fadd v17.4s, v17.4s, v14.4s                  \n"      \
-  "bif  v16.16b, v12.16b, v11.16b \n" /* choose*/        \
-                                                         \
-  "ld1 {v18.4s}, [%[inptr1]]                 \n"         \
-  "ld1 {v19.4s}, [%[inptr2]]                 \n"         \
-                                                         \
-  "ext  v10.16b, v0.16b, v15.16b, #4     \n"             \
-                                                         \
-  "st1 {v16.4s}, [%[outptr0]], #16              \n"      \
-  "cmhs v11.4s, v17.4s,  %[vzero].4s \n" /* vcgeq_u32 */ \
-  "fmul v12.4s, v16.4s, v22.4s                  \n"      \
-                                                         \
-  "ld1 {v20.4s}, [%[inptr3]]                 \n"         \
-  "ld1 {v21.4s}, [%[inptr4]]                 \n"         \
-                                                         \
-  "and  v16.16b, %[vbias].16b, %[vbias].16b  \n"         \
-  "bif v17.16b, v12.16b, v11.16b \n" /* choose*/         \
-                                                         \
-  "cmp %w[cnt], #1                             \n"       \
-                                                         \
-  "st1 {v17.4s}, [%[outptr1]], #16              \n"      \
-  "and  v17.16b, %[vbias].16b, %[vbias].16b  \n"         \
-                                                         \
+#define LEFT_RESULT_S2_LEAKY_RELU                         \
+  "ld1 {v22.4s}, [%[scale_ptr]]                  \n"      \
+  "fcmge v11.4s, v16.4s,  %[vzero].4s \n" /* vcgeq_f32 */ \
+                                                          \
+  "ld2  {v0.4s, v1.4s}, [%[inptr0]], #32    \n"           \
+  "ld2  {v2.4s, v3.4s}, [%[inptr1]], #32    \n"           \
+  "ld2  {v4.4s, v5.4s}, [%[inptr2]], #32    \n"           \
+                                                          \
+  "fmul v12.4s, v16.4s, v22.4s                  \n"       \
+  "fadd v17.4s, v17.4s, v13.4s                  \n"       \
+                                                          \
+  "ld2  {v6.4s, v7.4s}, [%[inptr3]], #32    \n"           \
+  "ld2  {v8.4s, v9.4s}, [%[inptr4]], #32    \n"           \
+  "ld1 {v15.4s}, [%[inptr0]]                 \n"          \
+                                                          \
+  "fadd v17.4s, v17.4s, v14.4s                  \n"       \
+  "bif  v16.16b, v12.16b, v11.16b \n" /* choose*/         \
+                                                          \
+  "ld1 {v18.4s}, [%[inptr1]]                 \n"          \
+  "ld1 {v19.4s}, [%[inptr2]]                 \n"          \
+                                                          \
+  "ext  v10.16b, v0.16b, v15.16b, #4     \n"              \
+                                                          \
+  "st1 {v16.4s}, [%[outptr0]], #16              \n"       \
+  "fcmge v11.4s, v17.4s,  %[vzero].4s \n" /* vcgeq_u32 */ \
+  "fmul v12.4s, v17.4s, v22.4s                  \n"       \
+                                                          \
+  "ld1 {v20.4s}, [%[inptr3]]                 \n"          \
+  "ld1 {v21.4s}, [%[inptr4]]                 \n"          \
+                                                          \
+  "and  v16.16b, %[vbias].16b, %[vbias].16b  \n"          \
+  "bif v17.16b, v12.16b, v11.16b \n" /* choose*/          \
+                                                          \
+  "cmp %w[cnt], #1                             \n"        \
+                                                          \
+  "st1 {v17.4s}, [%[outptr1]], #16              \n"       \
+  "and  v17.16b, %[vbias].16b, %[vbias].16b  \n"          \
+                                                          \
   "blt 1f                                     \n"
 
 #define MID_RESULT_S2_RELU                                    \
@@ -542,30 +616,31 @@ void conv_depthwise_3x3s2_fp32(const float* din,
                                                               \
   "bne  2b                                    \n"
 
-#define MID_RESULT_S2_LEAKY_RELU                         \
-  "cmhs v11.4s, v16.4s,  %[vzero].4s \n" /* vcgeq_u32 */ \
-  "fmul v12.4s, v16.4s, v22.4s                  \n"      \
-                                                         \
-  "fadd v17.4s, v17.4s, v13.4s                  \n"      \
-                                                         \
-  "ld1 {v19.4s}, [%[inptr2]]                 \n"         \
-  "ld1 {v20.4s}, [%[inptr3]]                 \n"         \
-  "ld1 {v21.4s}, [%[inptr4]]                 \n"         \
-                                                         \
-  "bif  v16.16b, v12.16b, v11.16b \n" /* choose*/        \
-  "ext  v10.16b, v0.16b, v15.16b, #4     \n"             \
-  "cmhs v11.4s, v17.4s,  %[vzero].4s \n" /* vcgeq_u32 */ \
-  "fmul v12.4s, v17.4s, v22.4s                  \n"      \
-                                                         \
-  "st1 {v16.4s}, [%[outptr0]], #16              \n"      \
-  "subs %w[cnt], %w[cnt], #1                    \n"      \
-                                                         \
-  "and  v16.16b, %[vbias].16b, %[vbias].16b  \n"         \
-  "bif  v17.16b, v12.16b, v11.16b \n" /* choose*/        \
-  "st1 {v17.4s}, [%[outptr1]], #16              \n"      \
-                                                         \
-  "and  v17.16b, %[vbias].16b, %[vbias].16b  \n"         \
-                                                         \
+#define MID_RESULT_S2_LEAKY_RELU                          \
+  "fcmge v11.4s, v16.4s,  %[vzero].4s \n" /* vcgeq_u32 */ \
+  "fmul v12.4s, v16.4s, v22.4s                  \n"       \
+                                                          \
+  "fadd v17.4s, v17.4s, v13.4s                  \n"       \
+                                                          \
+  "ld1 {v19.4s}, [%[inptr2]]                 \n"          \
+  "ld1 {v20.4s}, [%[inptr3]]                 \n"          \
+  "ld1 {v21.4s}, [%[inptr4]]                 \n"          \
+                                                          \
+  "fadd v17.4s, v17.4s, v14.4s                  \n"       \
+  "bif  v16.16b, v12.16b, v11.16b \n" /* choose*/         \
+  "ext  v10.16b, v0.16b, v15.16b, #4     \n"              \
+  "fcmge v11.4s, v17.4s,  %[vzero].4s \n" /* vcgeq_u32 */ \
+  "fmul v12.4s, v17.4s, v22.4s                  \n"       \
+                                                          \
+  "st1 {v16.4s}, [%[outptr0]], #16              \n"       \
+  "subs %w[cnt], %w[cnt], #1                    \n"       \
+                                                          \
+  "and  v16.16b, %[vbias].16b, %[vbias].16b  \n"          \
+  "bif  v17.16b, v12.16b, v11.16b \n" /* choose*/         \
+  "st1 {v17.4s}, [%[outptr1]], #16              \n"       \
+                                                          \
+  "and  v17.16b, %[vbias].16b, %[vbias].16b  \n"          \
+                                                          \
   "bne  2b                                    \n"
 
 #define RIGHT_RESULT_S2_RELU                                  \
@@ -606,25 +681,25 @@ void conv_depthwise_3x3s2_fp32(const float* din,
   "st1 {v17.4s}, [%[outptr1]], #16              \n"           \
   "4:                                          \n"
 
-#define RIGHT_RESULT_S2_LEAKY_RELU                       \
-  "cmhs v11.4s, v16.4s,  %[vzero].4s \n" /* vcgeq_u32 */ \
-  "fmul v12.4s, v16.4s, v22.4s                  \n"      \
-  "fadd v17.4s, v17.4s, v13.4s                  \n"      \
-                                                         \
-  "bif  v16.16b, v12.16b, v11.16b \n" /* choose*/        \
-                                                         \
-  "fadd v17.4s, v17.4s, v14.4s                  \n"      \
-                                                         \
-  "bif  v16.16b, v0.16b, %[wmask].16b    \n"             \
-                                                         \
-  "cmhs v11.4s, v17.4s,  %[vzero].4s \n" /* vcgeq_u32 */ \
-  "fmul v12.4s, v17.4s, v22.4s                  \n"      \
-                                                         \
-  "st1 {v16.4s}, [%[outptr0]], #16              \n"      \
-  "bif  v17.16b, v12.16b, v11.16b \n" /* choose*/        \
-  "bif  v17.16b, v1.16b, %[wmask].16b    \n"             \
-                                                         \
-  "st1 {v17.4s}, [%[outptr1]], #16              \n"      \
+#define RIGHT_RESULT_S2_LEAKY_RELU                        \
+  "fcmge v11.4s, v16.4s,  %[vzero].4s \n" /* vcgeq_u32 */ \
+  "fmul v12.4s, v16.4s, v22.4s                  \n"       \
+  "fadd v17.4s, v17.4s, v13.4s                  \n"       \
+                                                          \
+  "bif  v16.16b, v12.16b, v11.16b \n" /* choose*/         \
+                                                          \
+  "fadd v17.4s, v17.4s, v14.4s                  \n"       \
+                                                          \
+  "bif  v16.16b, v0.16b, %[wmask].16b    \n"              \
+                                                          \
+  "fcmge v11.4s, v17.4s,  %[vzero].4s \n" /* vcgeq_u32 */ \
+  "fmul v12.4s, v17.4s, v22.4s                  \n"       \
+                                                          \
+  "st1 {v16.4s}, [%[outptr0]], #16              \n"       \
+  "bif  v17.16b, v12.16b, v11.16b \n" /* choose*/         \
+  "bif  v17.16b, v1.16b, %[wmask].16b    \n"              \
+                                                          \
+  "st1 {v17.4s}, [%[outptr1]], #16              \n"       \
   "4:                                          \n"
 
 #define COMPUTE_S_S2                                  \
@@ -977,207 +1052,158 @@ void act_switch_3x3s2p1(const float* din0_ptr,
                         int cnt,
                         int cnt_remain,
                         const operators::ActivationParam act_param) {
-  bool has_active = act_param.has_active;
-  if (has_active) {
-    float tmp = act_param.Relu_clipped_coef;
-    float ss = act_param.Leaky_relu_alpha;
-    float vsix[4] = {tmp, tmp, tmp, tmp};
-    float vscale[4] = {ss, ss, ss, ss};
+  float tmp = act_param.Relu_clipped_coef;
+  float ss = act_param.Leaky_relu_alpha;
+  float vsix[4] = {tmp, tmp, tmp, tmp};
+  float vscale[4] = {ss, ss, ss, ss};
 
-    switch (act_param.active_type) {
-      case lite_api::ActivationType::kRelu:
-        asm volatile(
-            INIT_S2 LEFT_COMPUTE_S2 LEFT_RESULT_S2_RELU MID_COMPUTE_S2
-                MID_RESULT_S2_RELU RIGHT_COMPUTE_S2 RIGHT_RESULT_S2_RELU
-            : [inptr0] "+r"(din0_ptr),
-              [inptr1] "+r"(din1_ptr),
-              [inptr2] "+r"(din2_ptr),
-              [inptr3] "+r"(din3_ptr),
-              [inptr4] "+r"(din4_ptr),
-              [outptr0] "+r"(doutr0_ptr),
-              [outptr1] "+r"(doutr1_ptr),
-              [cnt] "+r"(cnt)
-            : [vzero] "w"(vzero),
-              [w0] "w"(wr0),
-              [w1] "w"(wr1),
-              [w2] "w"(wr2),
-              [remain] "r"(cnt_remain),
-              [mask1] "w"(vmask_rp1),
-              [mask2] "w"(vmask_rp2),
-              [wmask] "w"(wmask),
-              [vbias] "w"(wbias)
-            : "cc",
-              "memory",
-              "v0",
-              "v1",
-              "v2",
-              "v3",
-              "v4",
-              "v5",
-              "v6",
-              "v7",
-              "v8",
-              "v9",
-              "v10",
-              "v11",
-              "v12",
-              "v13",
-              "v14",
-              "v15",
-              "v16",
-              "v17",
-              "v18",
-              "v19",
-              "v20",
-              "v21");
-        break;
-      case lite_api::ActivationType::kRelu6:
-        /* 0 <= din <= 6 */
-        asm volatile(
-            INIT_S2 LEFT_COMPUTE_S2 LEFT_RESULT_S2_RELU6 MID_COMPUTE_S2
-                MID_RESULT_S2_RELU6 RIGHT_COMPUTE_S2 RIGHT_RESULT_S2_RELU6
-            : [inptr0] "+r"(din0_ptr),
-              [inptr1] "+r"(din1_ptr),
-              [inptr2] "+r"(din2_ptr),
-              [inptr3] "+r"(din3_ptr),
-              [inptr4] "+r"(din4_ptr),
-              [outptr0] "+r"(doutr0_ptr),
-              [outptr1] "+r"(doutr1_ptr),
-              [cnt] "+r"(cnt)
-            : [vzero] "w"(vzero),
-              [w0] "w"(wr0),
-              [w1] "w"(wr1),
-              [w2] "w"(wr2),
-              [remain] "r"(cnt_remain),
-              [six_ptr] "r"(vsix),
-              [mask1] "w"(vmask_rp1),
-              [mask2] "w"(vmask_rp2),
-              [wmask] "w"(wmask),
-              [vbias] "w"(wbias)
-            : "cc",
-              "memory",
-              "v0",
-              "v1",
-              "v2",
-              "v3",
-              "v4",
-              "v5",
-              "v6",
-              "v7",
-              "v8",
-              "v9",
-              "v10",
-              "v11",
-              "v12",
-              "v13",
-              "v14",
-              "v15",
-              "v16",
-              "v17",
-              "v18",
-              "v19",
-              "v20",
-              "v21",
-              "v22");
-        break;
-      case lite_api::ActivationType::kLeakyRelu:
-        /*din = din >= 0 ? din : din * scale*/
-        asm volatile(INIT_S2 LEFT_COMPUTE_S2 LEFT_RESULT_S2_LEAKY_RELU
-                         MID_COMPUTE_S2 MID_RESULT_S2_LEAKY_RELU
-                             RIGHT_COMPUTE_S2 RIGHT_RESULT_S2_LEAKY_RELU
-                     : [inptr0] "+r"(din0_ptr),
-                       [inptr1] "+r"(din1_ptr),
-                       [inptr2] "+r"(din2_ptr),
-                       [inptr3] "+r"(din3_ptr),
-                       [inptr4] "+r"(din4_ptr),
-                       [outptr0] "+r"(doutr0_ptr),
-                       [outptr1] "+r"(doutr1_ptr),
-                       [cnt] "+r"(cnt)
-                     : [vzero] "w"(vzero),
-                       [w0] "w"(wr0),
-                       [w1] "w"(wr1),
-                       [w2] "w"(wr2),
-                       [remain] "r"(cnt_remain),
-                       [scale_ptr] "r"(vscale),
-                       [mask1] "w"(vmask_rp1),
-                       [mask2] "w"(vmask_rp2),
-                       [wmask] "w"(wmask),
-                       [vbias] "w"(wbias)
-                     : "cc",
-                       "memory",
-                       "v0",
-                       "v1",
-                       "v2",
-                       "v3",
-                       "v4",
-                       "v5",
-                       "v6",
-                       "v7",
-                       "v8",
-                       "v9",
-                       "v10",
-                       "v11",
-                       "v12",
-                       "v13",
-                       "v14",
-                       "v15",
-                       "v16",
-                       "v17",
-                       "v18",
-                       "v19",
-                       "v20",
-                       "v21",
-                       "v22");
-        break;
-      default:
-        LOG(FATAL) << "this act_type: "
-                   << static_cast<int>(act_param.active_type)
-                   << " fuse not support";
-    }
-  } else {
-    asm volatile(INIT_S2 LEFT_COMPUTE_S2 LEFT_RESULT_S2 MID_COMPUTE_S2
-                     MID_RESULT_S2 RIGHT_COMPUTE_S2 RIGHT_RESULT_S2
-                 : [inptr0] "+r"(din0_ptr),
-                   [inptr1] "+r"(din1_ptr),
-                   [inptr2] "+r"(din2_ptr),
-                   [inptr3] "+r"(din3_ptr),
-                   [inptr4] "+r"(din4_ptr),
-                   [outptr0] "+r"(doutr0_ptr),
-                   [outptr1] "+r"(doutr1_ptr),
-                   [cnt] "+r"(cnt)
-                 : [vzero] "w"(vzero),
-                   [w0] "w"(wr0),
-                   [w1] "w"(wr1),
-                   [w2] "w"(wr2),
-                   [remain] "r"(cnt_remain),
-                   [mask1] "w"(vmask_rp1),
-                   [mask2] "w"(vmask_rp2),
-                   [wmask] "w"(wmask),
-                   [vbias] "w"(wbias)
-                 : "cc",
-                   "memory",
-                   "v0",
-                   "v1",
-                   "v2",
-                   "v3",
-                   "v4",
-                   "v5",
-                   "v6",
-                   "v7",
-                   "v8",
-                   "v9",
-                   "v10",
-                   "v11",
-                   "v12",
-                   "v13",
-                   "v14",
-                   "v15",
-                   "v16",
-                   "v17",
-                   "v18",
-                   "v19",
-                   "v20",
-                   "v21");
+  switch (act_param.active_type) {
+    case lite_api::ActivationType::kRelu:
+      asm volatile(INIT_S2 LEFT_COMPUTE_S2 LEFT_RESULT_S2_RELU MID_COMPUTE_S2
+                       MID_RESULT_S2_RELU RIGHT_COMPUTE_S2 RIGHT_RESULT_S2_RELU
+                   : [inptr0] "+r"(din0_ptr),
+                     [inptr1] "+r"(din1_ptr),
+                     [inptr2] "+r"(din2_ptr),
+                     [inptr3] "+r"(din3_ptr),
+                     [inptr4] "+r"(din4_ptr),
+                     [outptr0] "+r"(doutr0_ptr),
+                     [outptr1] "+r"(doutr1_ptr),
+                     [cnt] "+r"(cnt)
+                   : [vzero] "w"(vzero),
+                     [w0] "w"(wr0),
+                     [w1] "w"(wr1),
+                     [w2] "w"(wr2),
+                     [remain] "r"(cnt_remain),
+                     [mask1] "w"(vmask_rp1),
+                     [mask2] "w"(vmask_rp2),
+                     [wmask] "w"(wmask),
+                     [vbias] "w"(wbias)
+                   : "cc",
+                     "memory",
+                     "v0",
+                     "v1",
+                     "v2",
+                     "v3",
+                     "v4",
+                     "v5",
+                     "v6",
+                     "v7",
+                     "v8",
+                     "v9",
+                     "v10",
+                     "v11",
+                     "v12",
+                     "v13",
+                     "v14",
+                     "v15",
+                     "v16",
+                     "v17",
+                     "v18",
+                     "v19",
+                     "v20",
+                     "v21");
+      break;
+    case lite_api::ActivationType::kRelu6:
+      /* 0 <= din <= 6 */
+      asm volatile(
+          INIT_S2 LEFT_COMPUTE_S2 LEFT_RESULT_S2_RELU6 MID_COMPUTE_S2
+              MID_RESULT_S2_RELU6 RIGHT_COMPUTE_S2 RIGHT_RESULT_S2_RELU6
+          : [inptr0] "+r"(din0_ptr),
+            [inptr1] "+r"(din1_ptr),
+            [inptr2] "+r"(din2_ptr),
+            [inptr3] "+r"(din3_ptr),
+            [inptr4] "+r"(din4_ptr),
+            [outptr0] "+r"(doutr0_ptr),
+            [outptr1] "+r"(doutr1_ptr),
+            [cnt] "+r"(cnt)
+          : [vzero] "w"(vzero),
+            [w0] "w"(wr0),
+            [w1] "w"(wr1),
+            [w2] "w"(wr2),
+            [remain] "r"(cnt_remain),
+            [six_ptr] "r"(vsix),
+            [mask1] "w"(vmask_rp1),
+            [mask2] "w"(vmask_rp2),
+            [wmask] "w"(wmask),
+            [vbias] "w"(wbias)
+          : "cc",
+            "memory",
+            "v0",
+            "v1",
+            "v2",
+            "v3",
+            "v4",
+            "v5",
+            "v6",
+            "v7",
+            "v8",
+            "v9",
+            "v10",
+            "v11",
+            "v12",
+            "v13",
+            "v14",
+            "v15",
+            "v16",
+            "v17",
+            "v18",
+            "v19",
+            "v20",
+            "v21",
+            "v22");
+      break;
+    case lite_api::ActivationType::kLeakyRelu:
+      /*din = din >= 0 ? din : din * scale*/
+      asm volatile(INIT_S2 LEFT_COMPUTE_S2 LEFT_RESULT_S2_LEAKY_RELU
+                       MID_COMPUTE_S2 MID_RESULT_S2_LEAKY_RELU RIGHT_COMPUTE_S2
+                           RIGHT_RESULT_S2_LEAKY_RELU
+                   : [inptr0] "+r"(din0_ptr),
+                     [inptr1] "+r"(din1_ptr),
+                     [inptr2] "+r"(din2_ptr),
+                     [inptr3] "+r"(din3_ptr),
+                     [inptr4] "+r"(din4_ptr),
+                     [outptr0] "+r"(doutr0_ptr),
+                     [outptr1] "+r"(doutr1_ptr),
+                     [cnt] "+r"(cnt)
+                   : [vzero] "w"(vzero),
+                     [w0] "w"(wr0),
+                     [w1] "w"(wr1),
+                     [w2] "w"(wr2),
+                     [remain] "r"(cnt_remain),
+                     [scale_ptr] "r"(vscale),
+                     [mask1] "w"(vmask_rp1),
+                     [mask2] "w"(vmask_rp2),
+                     [wmask] "w"(wmask),
+                     [vbias] "w"(wbias)
+                   : "cc",
+                     "memory",
+                     "v0",
+                     "v1",
+                     "v2",
+                     "v3",
+                     "v4",
+                     "v5",
+                     "v6",
+                     "v7",
+                     "v8",
+                     "v9",
+                     "v10",
+                     "v11",
+                     "v12",
+                     "v13",
+                     "v14",
+                     "v15",
+                     "v16",
+                     "v17",
+                     "v18",
+                     "v19",
+                     "v20",
+                     "v21",
+                     "v22");
+      break;
+    default:
+      LOG(FATAL) << "this act_type: " << static_cast<int>(act_param.active_type)
+                 << " fuse not support";
   }
 }
 #endif
@@ -1202,15 +1228,17 @@ void conv_depthwise_3x3s2p1_bias(float* dout,
   int out_pad_idx[4] = {0, 1, 2, 3};
   int size_pad_bottom = h_out * 2 - h_in;
 
-  int cnt_col = (w_out >> 2) - 2;
-  int size_right_remain = w_in - (7 + cnt_col * 8);
-  if (size_right_remain >= 9) {
-    cnt_col++;
-    size_right_remain -= 8;
-  }
-  int cnt_remain = (size_right_remain == 8) ? 4 : (w_out % 4);
+  int tile_w = w_out >> 2;
+  int cnt_remain = w_out % 4;
+  unsigned int size_right_remain = (unsigned int)(7 + (tile_w << 3) - w_in);
+  size_right_remain = 8 - size_right_remain;
 
-  int size_right_pad = w_out * 2 - w_in;
+  if (cnt_remain == 0 && size_right_remain == 0) {
+    cnt_remain = 4;
+    tile_w -= 1;
+    size_right_remain = 8;
+  }
+  int cnt_col = tile_w - 1;
 
   uint32x4_t vmask_rp1 = vcgtq_s32(vdupq_n_s32(size_right_remain),
                                    vld1q_s32(right_pad_idx));  // 0 2 4 6
@@ -1276,7 +1304,7 @@ void conv_depthwise_3x3s2p1_bias(float* dout,
       float* doutr1_ptr = nullptr;
 
 #ifdef __aarch64__
-      for (int i = 0; i < h_in; i += 4) {
+      for (int i = 0; i < h_out; i += 2) {
         din0_ptr = dr0;
         din1_ptr = dr1;
         din2_ptr = dr2;
@@ -1303,8 +1331,8 @@ void conv_depthwise_3x3s2p1_bias(float* dout,
         dr4 = dr3 + w_in;
 
         //! process bottom pad
-        if (i + 4 > h_in) {
-          switch (i + 4 - h_in) {
+        if (i * 2 + 4 > h_in) {
+          switch (i * 2 + 4 - h_in) {
             case 4:
               din1_ptr = zero_ptr;
             case 3:
@@ -1318,7 +1346,7 @@ void conv_depthwise_3x3s2p1_bias(float* dout,
           }
         }
         //! process output pad
-        if (i / 2 + 2 > h_out) {
+        if (i + 2 > h_out) {
           doutr1_ptr = write_ptr;
         }
         int cnt = cnt_col;
@@ -1343,7 +1371,7 @@ void conv_depthwise_3x3s2p1_bias(float* dout,
         doutr0 = doutr0 + 2 * w_out;
       }
 #else
-      for (int i = 0; i < h_in; i += 2) {
+      for (int i = 0; i < h_out; i++) {
         din0_ptr = dr0;
         din1_ptr = dr1;
         din2_ptr = dr2;
@@ -1364,8 +1392,8 @@ void conv_depthwise_3x3s2p1_bias(float* dout,
         }
 
         //! process bottom pad
-        if (i + 2 > h_in) {
-          switch (i + 2 - h_in) {
+        if (i * 2 + 2 > h_in) {
+          switch (i * 2 + 2 - h_in) {
             case 2:
               din1_ptr = zero_ptr;
             case 1:
@@ -1567,247 +1595,191 @@ void act_switch_3x3s2p0(const float* din0_ptr,
                         int cnt,
                         int cnt_remain,
                         const operators::ActivationParam act_param) {
-  bool has_active = act_param.has_active;
-  if (has_active) {
-    float tmp = act_param.Relu_clipped_coef;
-    float ss = act_param.Leaky_relu_alpha;
-    float vsix[4] = {tmp, tmp, tmp, tmp};
-    float vscale[4] = {ss, ss, ss, ss};
+  float tmp = act_param.Relu_clipped_coef;
+  float ss = act_param.Leaky_relu_alpha;
+  float vsix[4] = {tmp, tmp, tmp, tmp};
+  float vscale[4] = {ss, ss, ss, ss};
 
-    switch (act_param.active_type) {
-      case lite_api::ActivationType::kRelu:
-        asm volatile(
-            INIT_S2
-            "ld1 {v15.4s}, [%[inptr0]]                 \n"
-            "ld1 {v18.4s}, [%[inptr1]]                 \n"
-            "ld1 {v19.4s}, [%[inptr2]]                 \n"
-            "ld1 {v20.4s}, [%[inptr3]]                 \n"
-            "ld1 {v21.4s}, [%[inptr4]]                 \n"
-            "ext  v10.16b, v0.16b, v15.16b, #4     \n"  // v10 = {2,4,6,8}
-            MID_COMPUTE_S2 MID_RESULT_S2_RELU
-            "cmp %w[remain], #1                           \n"
-            "blt 4f                                     \n" RIGHT_COMPUTE_S2
-                RIGHT_RESULT_S2_RELU
-            "4:                                          \n"
-            : [inptr0] "+r"(din0_ptr),
-              [inptr1] "+r"(din1_ptr),
-              [inptr2] "+r"(din2_ptr),
-              [inptr3] "+r"(din3_ptr),
-              [inptr4] "+r"(din4_ptr),
-              [outptr0] "+r"(doutr0_ptr),
-              [outptr1] "+r"(doutr1_ptr),
-              [cnt] "+r"(cnt)
-            : [vzero] "w"(vzero),
-              [w0] "w"(wr0),
-              [w1] "w"(wr1),
-              [w2] "w"(wr2),
-              [remain] "r"(cnt_remain),
-              [mask1] "w"(vmask_rp1),
-              [mask2] "w"(vmask_rp2),
-              [wmask] "w"(wmask),
-              [vbias] "w"(wbias)
-            : "cc",
-              "memory",
-              "v0",
-              "v1",
-              "v2",
-              "v3",
-              "v4",
-              "v5",
-              "v6",
-              "v7",
-              "v8",
-              "v9",
-              "v10",
-              "v11",
-              "v12",
-              "v13",
-              "v14",
-              "v15",
-              "v16",
-              "v17",
-              "v18",
-              "v19",
-              "v20",
-              "v21");
-        break;
-      case lite_api::ActivationType::kRelu6:
-        /* 0 <= din <= 6 */
-        asm volatile(
-            INIT_S2
-            "ld1 {v15.4s}, [%[inptr0]]                 \n"
-            "ld1 {v18.4s}, [%[inptr1]]                 \n"
-            "ld1 {v19.4s}, [%[inptr2]]                 \n"
-            "ld1 {v20.4s}, [%[inptr3]]                 \n"
-            "ld1 {v21.4s}, [%[inptr4]]                 \n"
-            "ext  v10.16b, v0.16b, v15.16b, #4     \n"  // v10 = {2,4,6,8}
-            MID_COMPUTE_S2 MID_RESULT_S2_RELU6
-            "cmp %w[remain], #1                           \n"
-            "blt 4f                                     \n" RIGHT_COMPUTE_S2
-                RIGHT_RESULT_S2_RELU6
-            "4:                                          \n"
-            : [inptr0] "+r"(din0_ptr),
-              [inptr1] "+r"(din1_ptr),
-              [inptr2] "+r"(din2_ptr),
-              [inptr3] "+r"(din3_ptr),
-              [inptr4] "+r"(din4_ptr),
-              [outptr0] "+r"(doutr0_ptr),
-              [outptr1] "+r"(doutr1_ptr),
-              [cnt] "+r"(cnt)
-            : [vzero] "w"(vzero),
-              [w0] "w"(wr0),
-              [w1] "w"(wr1),
-              [w2] "w"(wr2),
-              [remain] "r"(cnt_remain),
-              [six_ptr] "r"(vsix),
-              [mask1] "w"(vmask_rp1),
-              [mask2] "w"(vmask_rp2),
-              [wmask] "w"(wmask),
-              [vbias] "w"(wbias)
-            : "cc",
-              "memory",
-              "v0",
-              "v1",
-              "v2",
-              "v3",
-              "v4",
-              "v5",
-              "v6",
-              "v7",
-              "v8",
-              "v9",
-              "v10",
-              "v11",
-              "v12",
-              "v13",
-              "v14",
-              "v15",
-              "v16",
-              "v17",
-              "v18",
-              "v19",
-              "v20",
-              "v21",
-              "v22");
-        break;
-      case lite_api::ActivationType::kLeakyRelu:
-        /*din = din >= 0 ? din : din * scale*/
-        asm volatile(
-            INIT_S2
-            "ld1 {v15.4s}, [%[inptr0]]                 \n"
-            "ld1 {v18.4s}, [%[inptr1]]                 \n"
-            "ld1 {v19.4s}, [%[inptr2]]                 \n"
-            "ld1 {v20.4s}, [%[inptr3]]                 \n"
-            "ld1 {v21.4s}, [%[inptr4]]                 \n"
-            "ext  v10.16b, v0.16b, v15.16b, #4     \n"  // v10 = {2,4,6,8}
-            MID_COMPUTE_S2 MID_RESULT_S2_LEAKY_RELU
-            "cmp %w[remain], #1                           \n"
-            "blt 4f                                     \n" RIGHT_COMPUTE_S2
-                RIGHT_RESULT_S2_LEAKY_RELU
-            "4:                                          \n"
-            : [inptr0] "+r"(din0_ptr),
-              [inptr1] "+r"(din1_ptr),
-              [inptr2] "+r"(din2_ptr),
-              [inptr3] "+r"(din3_ptr),
-              [inptr4] "+r"(din4_ptr),
-              [outptr0] "+r"(doutr0_ptr),
-              [outptr1] "+r"(doutr1_ptr),
-              [cnt] "+r"(cnt)
-            : [vzero] "w"(vzero),
-              [w0] "w"(wr0),
-              [w1] "w"(wr1),
-              [w2] "w"(wr2),
-              [remain] "r"(cnt_remain),
-              [six_ptr] "r"(vscale),
-              [mask1] "w"(vmask_rp1),
-              [mask2] "w"(vmask_rp2),
-              [wmask] "w"(wmask),
-              [vbias] "w"(wbias)
-            : "cc",
-              "memory",
-              "v0",
-              "v1",
-              "v2",
-              "v3",
-              "v4",
-              "v5",
-              "v6",
-              "v7",
-              "v8",
-              "v9",
-              "v10",
-              "v11",
-              "v12",
-              "v13",
-              "v14",
-              "v15",
-              "v16",
-              "v17",
-              "v18",
-              "v19",
-              "v20",
-              "v21",
-              "v22");
-        break;
-      default:
-        LOG(FATAL) << "this act_type: "
-                   << static_cast<int>(act_param.active_type)
-                   << " fuse not support";
-    }
-  } else {
-    asm volatile(
-        INIT_S2
-        "ld1 {v15.4s}, [%[inptr0]]                 \n"
-        "ld1 {v18.4s}, [%[inptr1]]                 \n"
-        "ld1 {v19.4s}, [%[inptr2]]                 \n"
-        "ld1 {v20.4s}, [%[inptr3]]                 \n"
-        "ld1 {v21.4s}, [%[inptr4]]                 \n"
-        "ext  v10.16b, v0.16b, v15.16b, #4     \n"  // v10 = {2,4,6,8}
-        MID_COMPUTE_S2 MID_RESULT_S2
-        "cmp %w[remain], #1                           \n"
-        "blt 4f                                     \n" RIGHT_COMPUTE_S2
-            RIGHT_RESULT_S2 "4:                                          \n"
-        : [inptr0] "+r"(din0_ptr),
-          [inptr1] "+r"(din1_ptr),
-          [inptr2] "+r"(din2_ptr),
-          [inptr3] "+r"(din3_ptr),
-          [inptr4] "+r"(din4_ptr),
-          [outptr0] "+r"(doutr0_ptr),
-          [outptr1] "+r"(doutr1_ptr),
-          [cnt] "+r"(cnt)
-        : [vzero] "w"(vzero),
-          [w0] "w"(wr0),
-          [w1] "w"(wr1),
-          [w2] "w"(wr2),
-          [remain] "r"(cnt_remain),
-          [mask1] "w"(vmask_rp1),
-          [mask2] "w"(vmask_rp2),
-          [wmask] "w"(wmask),
-          [vbias] "w"(wbias)
-        : "cc",
-          "memory",
-          "v0",
-          "v1",
-          "v2",
-          "v3",
-          "v4",
-          "v5",
-          "v6",
-          "v7",
-          "v8",
-          "v9",
-          "v10",
-          "v11",
-          "v12",
-          "v13",
-          "v14",
-          "v15",
-          "v16",
-          "v17",
-          "v18",
-          "v19",
-          "v20",
-          "v21");
+  switch (act_param.active_type) {
+    case lite_api::ActivationType::kRelu:
+      asm volatile(
+          INIT_S2
+          "ld1 {v15.4s}, [%[inptr0]]                 \n"
+          "ld1 {v18.4s}, [%[inptr1]]                 \n"
+          "ld1 {v19.4s}, [%[inptr2]]                 \n"
+          "ld1 {v20.4s}, [%[inptr3]]                 \n"
+          "ld1 {v21.4s}, [%[inptr4]]                 \n"
+          "ext  v10.16b, v0.16b, v15.16b, #4     \n"  // v10 = {2,4,6,8}
+          MID_COMPUTE_S2 MID_RESULT_S2_RELU
+          "cmp %w[remain], #1                           \n"
+          "blt 4f                                     \n" RIGHT_COMPUTE_S2
+              RIGHT_RESULT_S2_RELU
+          "4:                                          \n"
+          : [inptr0] "+r"(din0_ptr),
+            [inptr1] "+r"(din1_ptr),
+            [inptr2] "+r"(din2_ptr),
+            [inptr3] "+r"(din3_ptr),
+            [inptr4] "+r"(din4_ptr),
+            [outptr0] "+r"(doutr0_ptr),
+            [outptr1] "+r"(doutr1_ptr),
+            [cnt] "+r"(cnt)
+          : [vzero] "w"(vzero),
+            [w0] "w"(wr0),
+            [w1] "w"(wr1),
+            [w2] "w"(wr2),
+            [remain] "r"(cnt_remain),
+            [mask1] "w"(vmask_rp1),
+            [mask2] "w"(vmask_rp2),
+            [wmask] "w"(wmask),
+            [vbias] "w"(wbias)
+          : "cc",
+            "memory",
+            "v0",
+            "v1",
+            "v2",
+            "v3",
+            "v4",
+            "v5",
+            "v6",
+            "v7",
+            "v8",
+            "v9",
+            "v10",
+            "v11",
+            "v12",
+            "v13",
+            "v14",
+            "v15",
+            "v16",
+            "v17",
+            "v18",
+            "v19",
+            "v20",
+            "v21");
+      break;
+    case lite_api::ActivationType::kRelu6:
+      /* 0 <= din <= 6 */
+      asm volatile(
+          INIT_S2
+          "ld1 {v15.4s}, [%[inptr0]]                 \n"
+          "ld1 {v18.4s}, [%[inptr1]]                 \n"
+          "ld1 {v19.4s}, [%[inptr2]]                 \n"
+          "ld1 {v20.4s}, [%[inptr3]]                 \n"
+          "ld1 {v21.4s}, [%[inptr4]]                 \n"
+          "ext  v10.16b, v0.16b, v15.16b, #4     \n"  // v10 = {2,4,6,8}
+          "ld1 {v22.4s}, [%[six_ptr]]                  \n" MID_COMPUTE_S2
+              MID_RESULT_S2_RELU6
+          "cmp %w[remain], #1                           \n"
+          "blt 4f                                     \n" RIGHT_COMPUTE_S2
+              RIGHT_RESULT_S2_RELU6
+          "4:                                          \n"
+          : [inptr0] "+r"(din0_ptr),
+            [inptr1] "+r"(din1_ptr),
+            [inptr2] "+r"(din2_ptr),
+            [inptr3] "+r"(din3_ptr),
+            [inptr4] "+r"(din4_ptr),
+            [outptr0] "+r"(doutr0_ptr),
+            [outptr1] "+r"(doutr1_ptr),
+            [cnt] "+r"(cnt)
+          : [vzero] "w"(vzero),
+            [w0] "w"(wr0),
+            [w1] "w"(wr1),
+            [w2] "w"(wr2),
+            [remain] "r"(cnt_remain),
+            [six_ptr] "r"(vsix),
+            [mask1] "w"(vmask_rp1),
+            [mask2] "w"(vmask_rp2),
+            [wmask] "w"(wmask),
+            [vbias] "w"(wbias)
+          : "cc",
+            "memory",
+            "v0",
+            "v1",
+            "v2",
+            "v3",
+            "v4",
+            "v5",
+            "v6",
+            "v7",
+            "v8",
+            "v9",
+            "v10",
+            "v11",
+            "v12",
+            "v13",
+            "v14",
+            "v15",
+            "v16",
+            "v17",
+            "v18",
+            "v19",
+            "v20",
+            "v21",
+            "v22");
+      break;
+    case lite_api::ActivationType::kLeakyRelu:
+      /*din = din >= 0 ? din : din * scale*/
+      asm volatile(
+          INIT_S2
+          "ld1 {v15.4s}, [%[inptr0]]                 \n"
+          "ld1 {v18.4s}, [%[inptr1]]                 \n"
+          "ld1 {v19.4s}, [%[inptr2]]                 \n"
+          "ld1 {v20.4s}, [%[inptr3]]                 \n"
+          "ld1 {v21.4s}, [%[inptr4]]                 \n"
+          "ext  v10.16b, v0.16b, v15.16b, #4     \n"  // v10 = {2,4,6,8}
+          "ld1 {v22.4s}, [%[scale_ptr]]                  \n" MID_COMPUTE_S2
+              MID_RESULT_S2_LEAKY_RELU
+          "cmp %w[remain], #1                           \n"
+          "blt 4f                                     \n" RIGHT_COMPUTE_S2
+              RIGHT_RESULT_S2_LEAKY_RELU
+          "4:                                          \n"
+          : [inptr0] "+r"(din0_ptr),
+            [inptr1] "+r"(din1_ptr),
+            [inptr2] "+r"(din2_ptr),
+            [inptr3] "+r"(din3_ptr),
+            [inptr4] "+r"(din4_ptr),
+            [outptr0] "+r"(doutr0_ptr),
+            [outptr1] "+r"(doutr1_ptr),
+            [cnt] "+r"(cnt)
+          : [vzero] "w"(vzero),
+            [w0] "w"(wr0),
+            [w1] "w"(wr1),
+            [w2] "w"(wr2),
+            [remain] "r"(cnt_remain),
+            [scale_ptr] "r"(vscale),
+            [mask1] "w"(vmask_rp1),
+            [mask2] "w"(vmask_rp2),
+            [wmask] "w"(wmask),
+            [vbias] "w"(wbias)
+          : "cc",
+            "memory",
+            "v0",
+            "v1",
+            "v2",
+            "v3",
+            "v4",
+            "v5",
+            "v6",
+            "v7",
+            "v8",
+            "v9",
+            "v10",
+            "v11",
+            "v12",
+            "v13",
+            "v14",
+            "v15",
+            "v16",
+            "v17",
+            "v18",
+            "v19",
+            "v20",
+            "v21",
+            "v22");
+      break;
+    default:
+      LOG(FATAL) << "this act_type: " << static_cast<int>(act_param.active_type)
+                 << " fuse not support";
   }
 }
 #endif
@@ -1834,7 +1806,14 @@ void conv_depthwise_3x3s2p0_bias(float* dout,
   int tile_w = w_out >> 2;
   int cnt_remain = w_out % 4;
 
-  unsigned int size_right_remain = (unsigned int)(w_in - (tile_w << 3));
+  unsigned int size_right_remain = (unsigned int)(8 + (tile_w << 3) - w_in);
+  size_right_remain = 8 - size_right_remain;
+
+  if (cnt_remain == 0 && size_right_remain == 0) {
+    cnt_remain = 4;
+    tile_w -= 1;
+    size_right_remain = 8;
+  }
 
   uint32x4_t vmask_rp1 = vcgtq_s32(vdupq_n_s32(size_right_remain),
                                    vld1q_s32(right_pad_idx));  // 0 2 4 6

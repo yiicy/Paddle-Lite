@@ -300,14 +300,12 @@ class Tensor {
   }
 
   void flush() {
-    size_t memorySize =
-        shape_->memorySize(CellSize(dataType_)) * mem_scale_factor_;
+    size_t memorySize = placeHolder_->memorySize();
     fpga_flush(placeHolder_->data(), memorySize);
   }
 
   void invalidate() {
-    size_t memorySize =
-        shape_->memorySize(CellSize(dataType_)) * mem_scale_factor_;
+    size_t memorySize = placeHolder_->memorySize();
     fpga_invalidate(placeHolder_->data(), memorySize);
   }
 
@@ -353,10 +351,10 @@ class Tensor {
   void printScale(std::string type) { printScale(); }
 
   std::string dimsFileName() {
-    return std::to_string(shape_->num()) + "_" +
-           std::to_string(shape_->channel()) + "_" +
-           std::to_string(shape_->height()) + "_" +
-           std::to_string(shape_->width()) + ".txt";
+    return paddle::lite::to_string(shape_->num()) + "_" +
+           paddle::lite::to_string(shape_->channel()) + "_" +
+           paddle::lite::to_string(shape_->height()) + "_" +
+           paddle::lite::to_string(shape_->width()) + ".txt";
   }
 
   void saveToFile() { std::string path = dimsFileName(); }
@@ -376,7 +374,7 @@ class Tensor {
     invalidate();
     std::ofstream ofs;
     static int counter = 0;
-    std::string npath = std::to_string(counter) + "_" + path;
+    std::string npath = paddle::lite::to_string(counter) + "_" + path;
     counter++;
     save_file_with_name(npath);
   }
@@ -385,6 +383,7 @@ class Tensor {
     invalidate();
     std::ofstream ofs;
     ofs.open(path);
+    ofs << scale()[0] << " / " << scale()[1] << std::endl;
 
     for (int i = 0; i < shape_->numel(); i++) {
       float value = 0;

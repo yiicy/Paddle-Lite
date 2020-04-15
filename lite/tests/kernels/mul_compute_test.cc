@@ -99,7 +99,7 @@ class MulComputeTester : public arena::TestCase {
 
     std::vector<float> y(y_dims_.production());
     fill_data_rand(y.data(), -1.f, 1.f, y_dims_.production());
-    SetCommonTensor(y_, y_dims_, y.data());
+    SetCommonTensor(y_, y_dims_, y.data(), {}, true);
   }
 };
 
@@ -109,6 +109,7 @@ void TestMul(const std::vector<int64_t>& x_dims,
              int y_num_col_dims,
              const Place& place,
              float abs_error) {
+  LOG(INFO) << "run test arm";
   std::unique_ptr<arena::TestCase> tester(new MulComputeTester(place,
                                                                "def",
                                                                DDim(x_dims),
@@ -123,12 +124,14 @@ TEST(Mul, precision) {
   LOG(INFO) << "test mul op";
   float abs_error = 2e-5;
   Place place;
-#if defined(LITE_WITH_XPU)
+#if defined(LITE_WITH_NPU)
+  place = TARGET(kNPU);
+  abs_error = 1e-2;  // use fp16 in npu
+#elif defined(LITE_WITH_XPU)
   place = TARGET(kXPU);
 #else
   return;
 #endif
-
   TestMul({4, 5}, {5, 4}, 1, 1, place, abs_error);
   TestMul({4, 5}, {5, 4, 3, 2}, 1, 1, place, abs_error);
   TestMul({4, 20}, {5, 4, 3, 2}, 1, 2, place, abs_error);

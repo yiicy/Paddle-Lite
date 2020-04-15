@@ -128,7 +128,7 @@ class ConcateComputeTester : public arena::TestCase {
       for (int i = 0; i < x_dims_.production(); i++) {
         x_data[i] = static_cast<float>(i + n);
       }
-      const std::string x_name = "x_tensor_" + std::to_string(n);
+      const std::string x_name = "x_tensor_" + paddle::lite::to_string(n);
       x_vct_.push_back(x_name);
       SetCommonTensor(x_name, x_dims_, x_data.data());
     }
@@ -142,35 +142,29 @@ class ConcateComputeTester : public arena::TestCase {
 
 TEST(Concat, precision) {
   LOG(INFO) << "test concat op, kARM";
-#ifdef LITE_WITH_ARM
-  Place place(TARGET(kARM));
+  Place place;
+  float abs_error = 2e-5;
+#if defined(LITE_WITH_NPU)
+  place = TARGET(kNPU);
+  abs_error = 1e-2;  // use fp16 in npu
+#elif defined(LITE_WITH_ARM)
+  place = TARGET(kARM);
+#elif defined(LITE_WITH_X86)
+  place = TARGET(kX86);
+#else
+  return;
+#endif
+
   for (int axis : {1, 2}) {
     for (bool is_use_axis_tensor : {false, true}) {
       LOG(INFO) << "axis:" << axis
                 << ", is_use_axis_tensor:" << is_use_axis_tensor;
       std::unique_ptr<arena::TestCase> tester(
           new ConcateComputeTester(place, "def", axis, is_use_axis_tensor));
-      arena::Arena arena(std::move(tester), place, 2e-5);
+      arena::Arena arena(std::move(tester), place, abs_error);
       arena.TestPrecision();
     }
   }
-#endif
-
-#ifdef LITE_WITH_X86
-  Place place(TARGET(kX86));
-  LOG(INFO) << "test concate op, x86";
-  for (int axis : {1, 2}) {
-    for (bool is_use_axis_tensor : {false, true}) {
-      LOG(INFO) << "axis:" << axis
-                << ", is_use_axis_tensor:" << is_use_axis_tensor;
-      std::unique_ptr<arena::TestCase> tester(
-          new ConcateComputeTester(place, "def", axis, is_use_axis_tensor));
-      arena::Arena arena(std::move(tester), place, 2e-5);
-      arena.TestPrecision();
-    }
-  }
-
-#endif
 }
 
 }  // namespace lite

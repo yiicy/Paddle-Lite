@@ -36,18 +36,17 @@ inline bool CHECK_REBUILD_WHEN_SHAPE_CHANGED(int status) {
 using cvt_func_type =
     std::function<int(void* ctx, OpLite* op, KernelBase* kernel)>;
 using cvt_map_type =
-    std::unordered_map<std::string,
-                       std::unordered_map<std::string, cvt_func_type>>;
+    std::unordered_map<int, std::unordered_map<std::string, cvt_func_type>>;
 class Registry {
  public:
   static Registry& Instance();
 
   void Insert(const std::string& op_type,
-              const std::string& target,
+              const TargetType& target,
               const cvt_func_type& cvt_func_name);
   const cvt_func_type& Select(const std::string& op_type,
-                              const std::string& target) const;
-  bool Exists(const std::string& op_type, const std::string& target) const;
+                              const TargetType& target) const;
+  bool Exists(const std::string& op_type, const TargetType& target) const;
   Registry() = default;
 
  private:
@@ -58,14 +57,6 @@ class Registry {
 }  // namespace subgraph
 }  // namespace lite
 }  // namespace paddle
-
-// some platform-independent defintion
-#if defined(_WIN32)
-#define UNUSED
-#define __builtin_expect(EXP, C) (EXP)
-#else
-#define UNUSED __attribute__((unused))
-#endif
 
 #define STATIC_ASSERT_JITKERNEL_GLOBAL_NAMESPACE_LITE(uniq_name, msg)         \
   struct __test_global_namespace_##uniq_name##__ {};                          \
@@ -80,7 +71,7 @@ class Registry {
       "once!");                                                           \
   int __reg_subgraph_bridge_##op_type__##_##target__##_Insert() {         \
     paddle::lite::subgraph::Registry::Instance().Insert(                  \
-        #op_type__, #target__, cvt_func_name);                            \
+        #op_type__, TARGET(target__), cvt_func_name);                     \
     return 0;                                                             \
   }
 
