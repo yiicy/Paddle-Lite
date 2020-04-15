@@ -27,43 +27,50 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
+struct ParamBase {
+ public:
+  const std::vector<Tensor*>* input_tensor_ptrs() const { return nullptr; }
+  std::vector<Tensor*>* output_tensor_ptrs() { return nullptr; }
+
+ protected:
+  std::shared_ptr<std::vector<const Tensor*>> input_tensor_ptrs_cache_{nullptr};
+  std::shared_ptr<std::vector<Tensor*>> output_tensor_ptrs_cache_{nullptr};
+};
+
 #define WITH_INT8_CONFIG             \
   bool enable_int8{false};           \
   float input_scale{1.0};            \
   std::vector<float> weight_scale{}; \
   float output_scale{1.0};           \
   int bit_length{8};
-// base param
-struct ParamBase {
-  ParamBase() = default;
-  virtual ~ParamBase() = default;
-};
 
 /// ----------------------- Functional operators ------------------------------
-struct FeedParam : public ParamBase {
+struct FeedParam : ParamBase {
   std::vector<lite::Tensor>* feed_list{};
   lite::Tensor* out{};
   int col;
 };
 
-struct FetchParam : public ParamBase {
+struct FetchParam : ParamBase {
   const lite::Tensor* input{};
   std::vector<lite::Tensor>* fetch_list{};
   int col;
 };
 
 // Helper op for lite framework
-struct IoCopyParam : public ParamBase {
+struct IoCopyParam : ParamBase {
   const lite::Tensor* x{};
   lite::Tensor* y{};
+  int process_type{0};
 };
 
-struct LayoutParam : public ParamBase {
+struct LayoutParam : ParamBase {
   const lite::Tensor* x{};
   lite::Tensor* y{};
+  int process_type{0};
 };
 
-struct CalibParam : public ParamBase {
+struct CalibParam : ParamBase {
   const lite::Tensor* input{};
   lite::Tensor* output{};
   float scale;
@@ -81,7 +88,7 @@ struct CalibParam : public ParamBase {
 
 /// -------------------------- NN operators ------------------------------------
 
-struct FcParam : public ParamBase {
+struct FcParam : ParamBase {
   lite::Tensor* input{nullptr};
   lite::Tensor* w{nullptr};
   lite::Tensor* bias{nullptr};
@@ -92,9 +99,24 @@ struct FcParam : public ParamBase {
   bool padding_weights{false};
   // for int8
   WITH_INT8_CONFIG
+  ///////////////////////////////////////////////////////////////////////////////////
+  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>({input}));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({output}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
-struct SearchSeqFcParam : public ParamBase {
+struct SearchSeqFcParam : ParamBase {
   lite::Tensor* x{nullptr};
   lite::Tensor* w{nullptr};
   lite::Tensor* b{nullptr};
@@ -103,7 +125,7 @@ struct SearchSeqFcParam : public ParamBase {
 };
 
 // For Interpolate Op
-struct InterpolateParam : public ParamBase {
+struct InterpolateParam : ParamBase {
   lite::Tensor* X{};
   lite::Tensor* OutSize{};
   lite::Tensor* Out{};
@@ -120,7 +142,7 @@ struct InterpolateParam : public ParamBase {
 };
 
 // For Mul Op
-struct MulParam : public ParamBase {
+struct MulParam : ParamBase {
   const lite::Tensor* x{};
   const lite::Tensor* y{};
   lite::Tensor* output{};
@@ -129,9 +151,24 @@ struct MulParam : public ParamBase {
   int y_num_col_dims{1};
   // for int8
   WITH_INT8_CONFIG
+  ///////////////////////////////////////////////////////////////////////////////////
+  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>({x, y}));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({output}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
-struct MulGradParam : public ParamBase {
+struct MulGradParam : ParamBase {
   const lite::Tensor* x{};
   const lite::Tensor* y{};
   const lite::Tensor* output_grad{};
@@ -143,7 +180,7 @@ struct MulGradParam : public ParamBase {
 };
 
 // For ReduceMean Op
-struct ReduceMeanParam : public ParamBase {
+struct ReduceMeanParam : ParamBase {
   lite::Tensor* X{};
   lite::Tensor* Out{};
 
@@ -152,7 +189,7 @@ struct ReduceMeanParam : public ParamBase {
 };
 
 // For Stack Op
-struct StackParam : public ParamBase {
+struct StackParam : ParamBase {
   std::vector<lite::Tensor*> X;
   lite::Tensor* Out{};
 
@@ -160,7 +197,7 @@ struct StackParam : public ParamBase {
 };
 
 // For Power Op
-struct PowerParam : public ParamBase {
+struct PowerParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
 
@@ -169,7 +206,7 @@ struct PowerParam : public ParamBase {
   float power{};
 };
 
-struct ShuffleChannelParam : public ParamBase {
+struct ShuffleChannelParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
 
@@ -177,7 +214,7 @@ struct ShuffleChannelParam : public ParamBase {
 };
 
 // For Yolobox
-struct YoloBoxParam : public ParamBase {
+struct YoloBoxParam : ParamBase {
   lite::Tensor* X{};
   lite::Tensor* ImgSize{};
   lite::Tensor* Boxes{};
@@ -190,24 +227,54 @@ struct YoloBoxParam : public ParamBase {
 };
 
 // For Scale Op
-struct ScaleParam : public ParamBase {
+struct ScaleParam : ParamBase {
   lite::Tensor* x{};
   lite::Tensor* output{};
 
   float scale{1.};
   float bias{};
   bool bias_after_scale{true};
+  ///////////////////////////////////////////////////////////////////////////////////
+  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>({x}));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({output}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
 // For Softmax op
-struct SoftmaxParam : public ParamBase {
+struct SoftmaxParam : ParamBase {
   lite::Tensor* x{};
   lite::Tensor* output{};
   int axis{-1};
+  ///////////////////////////////////////////////////////////////////////////////////
+  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>({x}));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({output}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
 // For Reshape and Reshape2 Op
-struct ReshapeParam : public ParamBase {
+struct ReshapeParam : ParamBase {
   const lite::Tensor* x{};
   std::vector<const lite::Tensor*> shape_tensor_vct{};
   const lite::Tensor* shape_tensor{};
@@ -216,33 +283,71 @@ struct ReshapeParam : public ParamBase {
 
   lite::Tensor* xshape{};
   bool inplace{false};
+  ///////////////////////////////////////////////////////////////////////////////////
+  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>({x}));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({output}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
 // For Concat op
-struct ConcatParam : public ParamBase {
+struct ConcatParam : ParamBase {
   std::vector<lite::Tensor*> x{};
   lite::Tensor* output{};
   int axis{0};
   lite::Tensor* axis_tensor{};
+  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      std::vector<const Tensor*> vec;
+      for (auto in : x) {
+        vec.push_back(in);
+      }
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>(vec));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({output}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
 /// ----------------------- activation operators ----------------------
-struct ActivationParam : public ParamBase {
+struct ActivationParam : ParamBase {
   const lite::Tensor* X{};
+  lite::Tensor* Out{};
+  lite_api::ActivationType active_type;
+  bool has_active{false};
   float Leaky_relu_alpha{0};   // leaky_relu param
   float Relu_clipped_coef{6};  // relu_clipped param
   std::string Prelu_mode{
       "channel"};  // prelu param, can be "all", "channel" or "element"
   lite::Tensor* Prelu_alpha{};  // prelu param
   float Swish_beta;             // swish param
-  float hard_sigmoid_slope{0.2};
-  float hard_sigmoid_offset{0.5};
-  lite::Tensor* Out{};
-  bool has_active{false};
-  lite_api::ActivationType active_type;
+  // hard_sigmoid param
+  float hard_sigmoid_slope{0.2f};
+  float hard_sigmoid_offset{0.5f};
+  // hard_swish param
+  float hard_swish_threshold{6.0};
+  float hard_swish_scale{6.0};
+  float hard_swish_offset{3.0};
 };
 
-struct ActivationGradParam : public ParamBase {
+struct ActivationGradParam : ParamBase {
   const lite::Tensor* X{};
   const lite::Tensor* Out{};
   // for backward
@@ -251,7 +356,7 @@ struct ActivationGradParam : public ParamBase {
 };
 
 // For Convolution op
-struct ConvParam : public ParamBase {
+struct ConvParam : ParamBase {
   lite::Tensor* x{};
   lite::Tensor* filter{};
   lite::Tensor* bias{nullptr};
@@ -287,12 +392,30 @@ struct ConvParam : public ParamBase {
   ActivationParam activation_param;
   // support var_length or not
   bool var_length{false};
+  // only used in conv_transpose.
+  std::vector<int> output_size;
   // for int8
   WITH_INT8_CONFIG
+
+  ///////////////////////////////////////////////////////////////////////////////////
+  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>({x}));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({output}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
 // For BatchNorm op
-struct BatchNormParam : public ParamBase {
+struct BatchNormParam : ParamBase {
   lite::Tensor* x{};
   lite::Tensor* bias{};
   lite::Tensor* scale{};
@@ -308,10 +431,25 @@ struct BatchNormParam : public ParamBase {
   float epsilon;
   float momentum;
   DataLayoutType data_layout{DATALAYOUT(kNCHW)};
+  ///////////////////////////////////////////////////////////////////////////////////
+  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>({x}));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({y}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
 // For Pooling op
-struct PoolParam : public ParamBase {
+struct PoolParam : ParamBase {
   lite::Tensor* x{};
   lite::Tensor* output{};
   std::string pooling_type{""};
@@ -332,10 +470,25 @@ struct PoolParam : public ParamBase {
   std::string data_format{"AnyLayout"};
   // for int8
   WITH_INT8_CONFIG
+  ///////////////////////////////////////////////////////////////////////////////////
+  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>({x}));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({output}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
 // For Dropout op
-struct DropoutParam : public ParamBase {
+struct DropoutParam : ParamBase {
   const lite::Tensor* x{};
   lite::Tensor* output{};
   lite::Tensor* mask{};
@@ -347,7 +500,7 @@ struct DropoutParam : public ParamBase {
 };
 
 // For Split op
-struct SplitParam : public ParamBase {
+struct SplitParam : ParamBase {
   lite::Tensor* x{};
   std::vector<lite::Tensor*> output{};
   lite::Tensor* axis_tensor;
@@ -356,10 +509,25 @@ struct SplitParam : public ParamBase {
   int axis{-1};
   int num{0};
   std::vector<int> sections;
+  ///////////////////////////////////////////////////////////////////////////////////
+  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>({x}));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({output}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
 // For Transpose op
-struct TransposeParam : public ParamBase {
+struct TransposeParam : ParamBase {
   const lite::Tensor* x{};
   lite::Tensor* output{};
   lite::Tensor* xshape{};
@@ -367,10 +535,25 @@ struct TransposeParam : public ParamBase {
   std::vector<int> axis;
   bool use_mkldnn{false};
   std::string data_format{"AnyLayout"};
+  ///////////////////////////////////////////////////////////////////////////////////
+  //  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>({x}));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({output}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
 /// ----------------------- element wise operators ----------------------
-struct ElementwiseParam : public ParamBase {
+struct ElementwiseParam : ParamBase {
   const lite::Tensor* X{};
   const lite::Tensor* Y{};
   lite::Tensor* Out{};
@@ -379,13 +562,29 @@ struct ElementwiseParam : public ParamBase {
   WITH_INT8_CONFIG
   float x_input_scale{1.0};
   float y_input_scale{1.0};
+  ///////////////////////////////////////////////////////////////////////////////////
+  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>({X, Y}));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({Out}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
-struct ElementwiseGradParam : public ParamBase {
+struct ElementwiseGradParam : ParamBase {
+  const lite::Tensor* X{};
   const lite::Tensor* Y{};
-  const lite::Tensor* Out_grad{};
-  lite::Tensor* X_grad{};
-  lite::Tensor* Y_grad{};
+  const lite::Tensor* OutGrad{};
+  lite::Tensor* XGrad{};
+  lite::Tensor* YGrad{};
   int axis{-1};  // for broadcasting.
 };
 
@@ -398,12 +597,12 @@ struct FusionElementwiseActivationGradParam : public ElementwiseGradParam {
 };
 
 /// ----------------------- mean operators ----------------------
-struct MeanParam : public ParamBase {
+struct MeanParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
 };
 
-struct MeanGradParam : public ParamBase {
+struct MeanGradParam : ParamBase {
   const lite::Tensor* X{};
   const lite::Tensor* Out_grad{};
   // for backward
@@ -446,7 +645,7 @@ struct MeanGradParam : public ParamBase {
 // };
 
 //
-struct FakeQuantizeMovingAvgMaxAbsParam : public ParamBase {
+struct FakeQuantizeMovingAvgMaxAbsParam : ParamBase {
   const lite::Tensor* x{};
   const lite::Tensor* in_scale{};
   const lite::Tensor* in_accum{};
@@ -457,17 +656,17 @@ struct FakeQuantizeMovingAvgMaxAbsParam : public ParamBase {
   lite::Tensor* out_accum{};
   int bit_length;
   bool is_test{true};
-  float moving_rate{0.9};
+  float moving_rate{0.9f};
 };
 
-struct FakeDequantizeMaxAbsParam : public ParamBase {
+struct FakeDequantizeMaxAbsParam : ParamBase {
   const lite::Tensor* x{};
   const lite::Tensor* in_scale{};
   lite::Tensor* out{};
   float max_range;
 };
 
-struct FakeChannelWiseDequantizeMaxAbsParam : public ParamBase {
+struct FakeChannelWiseDequantizeMaxAbsParam : ParamBase {
   const lite::Tensor* x{};
   std::vector<const lite::Tensor*> scale_tensors{};
   lite::Tensor* out{};
@@ -494,12 +693,12 @@ struct FakeChannelWiseDequantizeMaxAbsParam : public ParamBase {
 //   lite::Tensor* Out{};
 // };
 /// ----------------------- negative operators --------------
-struct NegativeParam : public ParamBase {
+struct NegativeParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
 };
 /// ----------------------- pad2d operators ----------------------
-struct Pad2dParam : public ParamBase {
+struct Pad2dParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
   std::vector<int> paddings{0, 0, 0, 0};
@@ -509,7 +708,7 @@ struct Pad2dParam : public ParamBase {
 };
 
 /// ----------------------- Crop operators ----------------------
-struct CropParam : public ParamBase {
+struct CropParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
   std::vector<int> offsets;
@@ -517,21 +716,21 @@ struct CropParam : public ParamBase {
 };
 
 ///----------------------- argmax operators ----------------------
-struct ArgmaxParam : public ParamBase {
+struct ArgmaxParam : ParamBase {
   lite::Tensor* X{};
   lite::Tensor* Out{};
   int Axis{0};
 };
 
 ///----------------------- axpy operators ----------------------
-struct AxpyParam : public ParamBase {
+struct AxpyParam : ParamBase {
   lite::Tensor* Scale{};
   lite::Tensor* X{};
   lite::Tensor* Bias{};
   lite::Tensor* Out{};
 };
 /// ----------------------- GRU unit operators ----------------------f
-struct GRUUnitParam : public ParamBase {
+struct GRUUnitParam : ParamBase {
   enum ActType { identity, sigmoid, tanh, relu };
   const lite::Tensor* input{nullptr};
   const lite::Tensor* hidden_prev{nullptr};
@@ -547,18 +746,18 @@ struct GRUUnitParam : public ParamBase {
 };
 
 /// ------------------------------ lrn operators ------------------------------
-struct LrnParam : public ParamBase {
+struct LrnParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
   int n{5};
-  float alpha{1e-4};
-  float beta{0.75};
-  float k{1.};
+  float alpha{1e-4f};
+  float beta{0.75f};
+  float k{1.f};
   std::string norm_region{"AcrossChannels"};
 };
 
 /// ----------------------- decode_bboxes operators ----------------------
-struct DecodeBboxesParam : public ParamBase {
+struct DecodeBboxesParam : ParamBase {
   const lite::Tensor* loc_data{};
   const lite::Tensor* prior_data{};
   lite::Tensor* bbox_data{};
@@ -574,7 +773,7 @@ struct DecodeBboxesParam : public ParamBase {
 };
 
 /// ----------------------- box_coder operators ----------------------
-struct BoxCoderParam : public ParamBase {
+struct BoxCoderParam : ParamBase {
   const lite::Tensor* prior_box{};
   const lite::Tensor* prior_box_var{};
   const lite::Tensor* target_box{};
@@ -587,7 +786,7 @@ struct BoxCoderParam : public ParamBase {
 };
 
 /// ----------------------- multiclass_nms operators ----------------------
-struct MulticlassNmsParam : public ParamBase {
+struct MulticlassNmsParam : ParamBase {
   const lite::Tensor* bboxes{};
   const lite::Tensor* scores{};
   lite::Tensor* out{};
@@ -595,14 +794,14 @@ struct MulticlassNmsParam : public ParamBase {
   int background_label{0};
   float score_threshold{};
   int nms_top_k{};
-  float nms_threshold{0.3};
-  float nms_eta{1.0};
+  float nms_threshold{0.3f};
+  float nms_eta{1.0f};
   int keep_top_k;
   bool normalized{true};
 };
 
 /// ----------------------- priorbox operators ----------------------
-struct PriorBoxParam : public ParamBase {
+struct PriorBoxParam : ParamBase {
   lite::Tensor* input{};
   lite::Tensor* image{};
   lite::Tensor* boxes{};
@@ -631,7 +830,7 @@ struct DensityPriorBoxParam : public PriorBoxParam {
   std::vector<int> density_sizes;
 };
 /// ----------------------- GRU operators ----------------------f
-struct GRUParam : public ParamBase {
+struct GRUParam : ParamBase {
   const lite::Tensor* input{nullptr};
   const lite::Tensor* h0{nullptr};
   const lite::Tensor* weight{nullptr};
@@ -648,7 +847,7 @@ struct GRUParam : public ParamBase {
 };
 
 /// ----------------------- BeamSearchDecode operators ----------------------f
-struct BeamSearchDecodeParam : public ParamBase {
+struct BeamSearchDecodeParam : ParamBase {
   std::vector<lite::Tensor>* ids{nullptr};
   std::vector<lite::Tensor>* scores{nullptr};
   lite::Tensor* sentence_ids{nullptr};
@@ -658,14 +857,21 @@ struct BeamSearchDecodeParam : public ParamBase {
 };
 
 /// ----------------------- LookupTable operators ----------------------f
-struct LookupTableParam : public ParamBase {
+struct LookupTableParam : ParamBase {
+  const lite::Tensor* W{nullptr};
+  const lite::Tensor* Ids{nullptr};
+  lite::Tensor* Out{nullptr};
+  int64_t padding_idx{-1};
+};
+
+struct LookupTableDequantParam : ParamBase {
   lite::Tensor* W{nullptr};
   lite::Tensor* Ids{nullptr};
   lite::Tensor* Out{nullptr};
   int64_t padding_idx{-1};
 };
 
-struct Im2SequenceParam : public ParamBase {
+struct Im2SequenceParam : ParamBase {
   const lite::Tensor* X{};
   const lite::Tensor* Y{};
   lite::Tensor* Out{};
@@ -675,19 +881,34 @@ struct Im2SequenceParam : public ParamBase {
   std::vector<int> out_strides{1, 1};
 };
 
-struct SequenceSoftmaxParam : public ParamBase {
+struct SequenceSoftmaxParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
+  ///////////////////////////////////////////////////////////////////////////////////
+  //  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>({X}));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({Out}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
-struct NormParam : public ParamBase {
+struct NormParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
   lite::Tensor* Norm{};
   int axis{1};
-  float epsilon{1e-10};
+  float epsilon{1e-10f};
 };
-struct LayerNormParam : public ParamBase {
+struct LayerNormParam : ParamBase {
   const lite::Tensor* X{};
   const lite::Tensor* Scale{};
   const lite::Tensor* Bias{};
@@ -695,16 +916,16 @@ struct LayerNormParam : public ParamBase {
   lite::Tensor* Mean{};
   lite::Tensor* Variance{};
   int begin_norm_axis{1};
-  float epsilon{1e-5};
+  float epsilon{1e-5f};
 };
 
-struct LogicalParam : public ParamBase {
+struct LogicalParam : ParamBase {
   const lite::Tensor* X{};
   const lite::Tensor* Y{};
   lite::Tensor* Out{};
 };
 
-struct CompareParam : public ParamBase {
+struct CompareParam : ParamBase {
   const lite::Tensor* X{};
   const lite::Tensor* Y{};
   bool force_cpu{0};
@@ -720,32 +941,32 @@ struct CompareParam : public ParamBase {
 //   std::vector<Tensor*> outs{};
 // };
 
-struct TopkParam : public ParamBase {
+struct TopkParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
   lite::Tensor* Indices{};
   int K{1};
 };
 
-struct IncrementParam : public ParamBase {
+struct IncrementParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
   float step{1};
 };
 
-struct WriteToArrayParam : public ParamBase {
-  const lite::Tensor* X{};
-  const lite::Tensor* I{};
-  std::vector<lite::Tensor>* Out{};
+struct WriteToArrayParam : ParamBase {
+  const lite::Tensor* X{nullptr};
+  const lite::Tensor* I{nullptr};
+  std::vector<lite::Tensor>* Out{nullptr};
 };
 
-struct ReadFromArrayParam : public ParamBase {
-  std::vector<lite::Tensor>* X{};
-  lite::Tensor* I{};
-  lite::Tensor* Out{};
+struct ReadFromArrayParam : ParamBase {
+  const std::vector<lite::Tensor>* X{nullptr};
+  const lite::Tensor* I{nullptr};
+  lite::Tensor* Out{nullptr};
 };
 
-struct BeamSearchParam : public ParamBase {
+struct BeamSearchParam : ParamBase {
   const lite::Tensor* pre_ids{};
   const lite::Tensor* pre_scores{};
   const lite::Tensor* ids{};
@@ -759,7 +980,7 @@ struct BeamSearchParam : public ParamBase {
   bool is_accumulated;
 };
 
-struct SequencePoolParam : public ParamBase {
+struct SequencePoolParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
   std::string pool_type{"AVERAGE"};
@@ -769,13 +990,22 @@ struct SequencePoolParam : public ParamBase {
 #endif
 };
 
-struct SequencePoolConcatParam : public ParamBase {
+struct SequenceConvParam : ParamBase {
+  const lite::Tensor* X{};
+  const lite::Tensor* Filter{};
+  lite::Tensor* Out{};
+  int contextStart{0};
+  int contextStride{1};
+  int contextLength;
+};
+
+struct SequencePoolConcatParam : ParamBase {
   std::vector<lite::Tensor*> X{};
   lite::Tensor* Out{};
   std::vector<std::string> pool_type{};
 };
 
-struct SearchGroupPaddingParam : public ParamBase {
+struct SearchGroupPaddingParam : ParamBase {
   lite::Tensor* x{};
   lite::Tensor* out_emb_padding{};
   lite::Tensor* out_new{};
@@ -783,36 +1013,42 @@ struct SearchGroupPaddingParam : public ParamBase {
   int pad_id;
 };
 
-struct SequenceReshapeParam : public ParamBase {
+struct SequenceReshapeParam : ParamBase {
   lite::Tensor* x{};
   lite::Tensor* output{};
   int new_dim;
 };
 
-struct SequenceExpandParam : public ParamBase {
+struct SequenceExpandParam : ParamBase {
   const lite::Tensor* X{};
   const lite::Tensor* Y{};
   lite::Tensor* Out{};
   int ref_level{-1};
 };
 
-struct SequenceExpandAsParam : public ParamBase {
+struct SequenceUnpadParam : ParamBase {
+  const lite::Tensor* X{};
+  const lite::Tensor* Length{};
+  lite::Tensor* Out{};
+};
+
+struct SequenceExpandAsParam : ParamBase {
   const lite::Tensor* x{nullptr};
   const lite::Tensor* y{nullptr};
   lite::Tensor* out{nullptr};
 };
 
-struct SequenceReverseParam : public ParamBase {
+struct SequenceReverseParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
 };
 
-struct SequenceConcatParam : public ParamBase {
+struct SequenceConcatParam : ParamBase {
   std::vector<lite::Tensor*> X{};
   lite::Tensor* Out{};
 };
 
-struct AttentionPaddingMaskParam : public ParamBase {
+struct AttentionPaddingMaskParam : ParamBase {
   const lite::Tensor* X{};
   const lite::Tensor* Y{};
   int pad_id;
@@ -821,21 +1057,21 @@ struct AttentionPaddingMaskParam : public ParamBase {
   lite::Tensor* pad_begin{};
 };
 
-struct SequenceArithmeticParam : public ParamBase {
+struct SequenceArithmeticParam : ParamBase {
   const lite::Tensor* X{};
   const lite::Tensor* Y{};
   int op_type{1};
   lite::Tensor* Out{};
 };
 
-struct ReduceMaxParam : public ParamBase {
+struct ReduceMaxParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
   std::vector<int> dim{};
   bool keep_dim{false};
 };
 
-struct LodResetParam : public ParamBase {
+struct LodResetParam : ParamBase {
   const lite::Tensor* X{};
   const lite::Tensor* Y{};
   lite::Tensor* Out{};
@@ -843,12 +1079,12 @@ struct LodResetParam : public ParamBase {
   bool append;
 };
 
-struct IsEmptyParam : public ParamBase {
+struct IsEmptyParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
 };
 
-struct ReduceParam : public ParamBase {
+struct ReduceParam : ParamBase {
   lite::Tensor* x{};
   lite::Tensor* output{};
   std::vector<int> dim{0};
@@ -856,7 +1092,7 @@ struct ReduceParam : public ParamBase {
   bool reduce_all{false};
 };
 
-struct VarConv2DParam : public ParamBase {
+struct VarConv2DParam : ParamBase {
   const lite::Tensor* X{};
   const lite::Tensor* ROW{};
   const lite::Tensor* COLUMN{};
@@ -875,19 +1111,19 @@ struct VarConv2DParam : public ParamBase {
 };
 
 /// ----------------------- shape operators ----------------------
-struct ShapeParam : public ParamBase {
+struct ShapeParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
 };
 
-struct CastParam : public ParamBase {
+struct CastParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
   int out_dtype{2};
   int in_dtype{2};
 };
 
-struct SliceParam : public ParamBase {
+struct SliceParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
   std::vector<int> axes{};
@@ -899,9 +1135,24 @@ struct SliceParam : public ParamBase {
   std::vector<lite::Tensor*> EndsTensorList{};
   lite::Tensor* StartsTensor{nullptr};
   lite::Tensor* EndsTensor{nullptr};
+  ///////////////////////////////////////////////////////////////////////////////////
+  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>({X}));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({Out}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
-struct AffineChannelParam : public ParamBase {
+struct AffineChannelParam : ParamBase {
   const lite::Tensor* X{};  // X is 4D tensor
   const lite::Tensor* Scale{};
   const lite::Tensor* Bias{};
@@ -909,19 +1160,19 @@ struct AffineChannelParam : public ParamBase {
   lite::Tensor* Out{};
 };
 
-struct AnchorGeneratorParam : public ParamBase {
+struct AnchorGeneratorParam : ParamBase {
   const lite::Tensor* Input{};
   std::vector<float> anchor_sizes{};
   std::vector<float> aspect_ratios{};
   std::vector<float> stride{};
-  std::vector<float> variances{{0.1, 0.1, 0.2, 0.2}};
-  float offset{0.5};
+  std::vector<float> variances{{0.1f, 0.1f, 0.2f, 0.2f}};
+  float offset{0.5f};
 
   lite::Tensor* Anchors{};
   lite::Tensor* Variances{};
 };
 
-struct GenerateProposalsParam : public ParamBase {
+struct GenerateProposalsParam : ParamBase {
   // inputs
   const lite::Tensor* Scores{};
   const lite::Tensor* BboxDeltas{};
@@ -932,62 +1183,107 @@ struct GenerateProposalsParam : public ParamBase {
   // attrs
   int pre_nms_topN{6000};
   int post_nms_topN{1000};
-  float nms_thresh{0.5};
-  float min_size{0.1};
-  float eta{1.0};
+  float nms_thresh{0.5f};
+  float min_size{0.1f};
+  float eta{1.0f};
 
   // outputs
   lite::Tensor* RpnRois{};
   lite::Tensor* RpnRoiProbs{};
 };
 /// ----------------------- squeeze operators ----------------------
-struct SqueezeParam : public ParamBase {
+struct SqueezeParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
   lite::Tensor* XShape{};
   std::vector<int> axes{};
+  ///////////////////////////////////////////////////////////////////////////////////
+  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>({X}));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({Out}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
-struct UnsqueezeParam : public ParamBase {
+struct UnsqueezeParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
   lite::Tensor* XShape{};
   std::vector<int> axes{};
   const lite::Tensor* axes_tensor{};
   std::vector<const lite::Tensor*> axes_tensor_vct{};
+  ///////////////////////////////////////////////////////////////////////////////////
+  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>({X}));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({Out}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
 /// ----------------------- expand operators ----------------------
-struct ExpandParam : public ParamBase {
+struct ExpandParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
   std::vector<int> expand_times{};
 };
 
 /// ----------------------- matmul operators ----------------------
-struct MatMulParam : public ParamBase {
+struct MatMulParam : ParamBase {
   const lite::Tensor* X{};
   const lite::Tensor* Y{};
   lite::Tensor* Out{};
   bool transpose_X{false};
   bool transpose_Y{false};
   float alpha{1.0f};
+  ///////////////////////////////////////////////////////////////////////////////////
+  // get a vector of input tensors
+  const std::vector<const Tensor*>* input_tensor_ptrs() {
+    if (UNLIKELY(input_tensor_ptrs_cache_)) {
+      input_tensor_ptrs_cache_.reset(new std::vector<const Tensor*>({X, Y}));
+    }
+    return input_tensor_ptrs_cache_.get();
+  }
+  // get a vector of output tensors
+  const std::vector<Tensor*>* output_tensor_ptrs() {
+    if (UNLIKELY(output_tensor_ptrs_cache_)) {
+      output_tensor_ptrs_cache_.reset(new std::vector<lite::Tensor*>({Out}));
+    }
+    return output_tensor_ptrs_cache_.get();
+  }
 };
 
-struct GatherParam : public ParamBase {
+struct GatherParam : ParamBase {
   const lite::Tensor* X{};
   const lite::Tensor* Index{};
   lite::Tensor* Out{};
 };
 
 /// ----------------------- assign operators -----------------------
-struct AssignParam : public ParamBase {
+struct AssignParam : ParamBase {
   const lite::Tensor* X{};
   lite::Tensor* Out{};
 };
 
 /// ----------------------- roi_align operators -----------------------
-struct RoiAlignParam : public ParamBase {
+struct RoiAlignParam : ParamBase {
   lite::Tensor* X{};
   lite::Tensor* ROIs{};
   lite::Tensor* Out{};
@@ -998,13 +1294,13 @@ struct RoiAlignParam : public ParamBase {
 };
 
 /// ----------------------- box_clip operators -----------------------
-struct BoxClipParam : public ParamBase {
+struct BoxClipParam : ParamBase {
   const lite::Tensor* Input{};
   const lite::Tensor* ImInfo{};
   lite::Tensor* Output{};
 };
 
-struct RangeParam : public ParamBase {
+struct RangeParam : ParamBase {
   const lite::Tensor* Start;
   const lite::Tensor* End;
   const lite::Tensor* Step;
@@ -1012,7 +1308,7 @@ struct RangeParam : public ParamBase {
 };
 
 /// ----------------------- assign_value operators -----------------------
-struct AssignValueParam : public ParamBase {
+struct AssignValueParam : ParamBase {
   std::vector<int> shape{};
   int dtype{};
   std::vector<float> fp32_values{};
@@ -1021,7 +1317,7 @@ struct AssignValueParam : public ParamBase {
 };
 
 /// --------------- sequence_topk_avg_pooling operators ------------------
-struct SequenceTopkAvgPoolingParam : public ParamBase {
+struct SequenceTopkAvgPoolingParam : ParamBase {
   const lite::Tensor* X{};
   const lite::Tensor* ROW{};
   const lite::Tensor* COLUMN{};
@@ -1032,7 +1328,7 @@ struct SequenceTopkAvgPoolingParam : public ParamBase {
 };
 
 /// --------------- search_fc operators ------------------
-struct SearchFcParam : public ParamBase {
+struct SearchFcParam : ParamBase {
   const lite::Tensor* X{};
   const lite::Tensor* W{};
   const lite::Tensor* b{};
@@ -1040,7 +1336,7 @@ struct SearchFcParam : public ParamBase {
   int out_size{};
 };
 /// --------------------- match_matrix_tensor operators --------------------
-struct MatchMatrixTensorParam : public ParamBase {
+struct MatchMatrixTensorParam : ParamBase {
   const lite::Tensor* x{};
   const lite::Tensor* y{};
   const lite::Tensor* w{};
@@ -1051,14 +1347,14 @@ struct MatchMatrixTensorParam : public ParamBase {
 };
 
 /// --------------------- search_seq_depadding operators --------------------
-struct SearchSeqDepaddingParam : public ParamBase {
+struct SearchSeqDepaddingParam : ParamBase {
   const lite::Tensor* pad{};
   const lite::Tensor* src{};
   lite::Tensor* out{};
 };
 
 /// --------------------- search_grnn operators --------------------
-struct SearchGrnnParam : public ParamBase {
+struct SearchGrnnParam : ParamBase {
   const lite::Tensor* x{};
   const lite::Tensor* wi{};
   const lite::Tensor* wh{};
@@ -1071,7 +1367,7 @@ struct SearchGrnnParam : public ParamBase {
   lite::Tensor* layout_input{};
 };
 
-struct SplitLodTensorParam : public ParamBase {
+struct SplitLodTensorParam : ParamBase {
   const lite::Tensor* x{};
   const lite::Tensor* mask{};
   lite::Tensor* out_true{};
@@ -1079,7 +1375,7 @@ struct SplitLodTensorParam : public ParamBase {
   int level{};
 };
 
-struct MergeLodTensorParam : public ParamBase {
+struct MergeLodTensorParam : ParamBase {
   const lite::Tensor* x{};
   const lite::Tensor* mask{};
   const lite::Tensor* in_true{};
@@ -1097,14 +1393,14 @@ struct MergeLodTensorParam : public ParamBase {
 //   bool is_scalar_condition{};
 // };
 
-struct CollectFpnProposalsParam : public ParamBase {
+struct CollectFpnProposalsParam : ParamBase {
   std::vector<lite::Tensor*> multi_level_rois{};
   std::vector<lite::Tensor*> multi_level_scores{};
   lite::Tensor* fpn_rois{};
   int post_nms_topN{};
 };
 
-struct DistributeFpnProposalsParam : public ParamBase {
+struct DistributeFpnProposalsParam : ParamBase {
   const lite::Tensor* fpn_rois{};
   std::vector<lite::Tensor*> multi_fpn_rois{};
   lite::Tensor* restore_index{};
@@ -1115,7 +1411,7 @@ struct DistributeFpnProposalsParam : public ParamBase {
 };
 
 /// --------------------- instance_norm operators --------------------
-struct InstanceNormParam : public ParamBase {
+struct InstanceNormParam : ParamBase {
   lite::Tensor* x{};
   lite::Tensor* out{};
   lite::Tensor* bias{};
@@ -1125,10 +1421,68 @@ struct InstanceNormParam : public ParamBase {
   float epsilon;
 };
 /// --------------------- grid sampler operators --------------------
-struct GridSamplerParam : public ParamBase {
+struct GridSamplerParam : ParamBase {
   lite::Tensor* x{};
   lite::Tensor* out{};
   lite::Tensor* grid{};
+};
+struct LstmParam : ParamBase {
+  lite::Tensor* Input{};
+  lite::Tensor* Weight{};
+  lite::Tensor* Bias{};
+  lite::Tensor* Hidden{};
+  lite::Tensor* Cell{};
+  lite::Tensor* BatchGate{};
+  lite::Tensor* BatchCellPreAct{};
+  lite::Tensor* H0{nullptr};
+  lite::Tensor* C0{nullptr};
+  bool use_peepholes;
+  bool is_reverse;
+  std::string gate_activation;
+  std::string cell_activation;
+  std::string candidate_activation;
+};
+
+struct CrfDecodingParam : ParamBase {
+  lite::Tensor* emission{};
+  lite::Tensor* transition{};
+  lite::Tensor* label{};
+  lite::Tensor* length{};
+  lite::Tensor* viterbi_path{};
+};
+
+struct CtcAlignParam : ParamBase {
+  lite::Tensor* input{};
+  lite::Tensor* input_length{};
+  lite::Tensor* output{};
+  lite::Tensor* output_length{};
+  int blank{0};
+  bool merge_repeated{true};
+  int padding_value{0};
+};
+
+struct XPUResNet50Param : ParamBase {
+  lite::Tensor* input{};
+  std::vector<lite::Tensor*> filter;
+  std::vector<lite::Tensor*> bias;
+  std::vector<lite::Tensor*> max_filter;
+  lite::Tensor* output{};
+};
+
+struct XPUMultiEncoderParam : ParamBase {
+  lite::Tensor* input{};
+  std::vector<lite::Tensor*> fc_weight;
+  std::vector<lite::Tensor*> fc_bias;
+  std::vector<lite::Tensor*> ln_scale;
+  std::vector<lite::Tensor*> ln_bias;
+  lite::Tensor* fc_weight_max{};
+  lite::Tensor* mask{};
+  lite::Tensor* output{};
+
+  int n_layers{};
+  int head_num{};
+  int size_per_head{};
+  std::string act_type{};
 };
 
 }  // namespace operators
