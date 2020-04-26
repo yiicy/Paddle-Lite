@@ -319,6 +319,8 @@ if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND LITE_WITH_ARM)
                     COMMAND cp "${CMAKE_SOURCE_DIR}/lite/utils/logging.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/utils"
                     COMMAND cp "${CMAKE_SOURCE_DIR}/lite/utils/cp_logging.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/utils"
                     COMMAND cp "${CMAKE_SOURCE_DIR}/lite/utils/macros.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/utils"
+                    COMMAND cp "${CMAKE_SOURCE_DIR}/lite/utils/string.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/utils"
+                    COMMAND cp "${CMAKE_SOURCE_DIR}/lite/utils/variant.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/utils"
                     COMMAND cp "${CMAKE_SOURCE_DIR}/lite/api/compute_api.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/api"
                     COMMAND cp "${CMAKE_SOURCE_DIR}/lite/api/paddle_api.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/api"
                     COMMAND cp "${CMAKE_SOURCE_DIR}/lite/api/paddle_place.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include/lite/api"

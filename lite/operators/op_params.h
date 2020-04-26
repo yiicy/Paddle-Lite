@@ -37,6 +37,8 @@ struct ParamBase {
  public:
   const std::vector<Tensor*>* input_tensor_ptrs() const { return nullptr; }
   std::vector<Tensor*>* output_tensor_ptrs() { return nullptr; }
+  ParamBase() = default;
+  virtual ~ParamBase(){};
 
  protected:
   std::shared_ptr<std::vector<const Tensor*>> input_tensor_ptrs_cache_{nullptr};

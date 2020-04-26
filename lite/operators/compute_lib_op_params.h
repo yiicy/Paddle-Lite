@@ -19,6 +19,7 @@
 #include <vector>
 #include "lite/api/paddle_place.h"
 #include "lite/core/tensor.h"
+#include "lite/utils/variant.h"
 /*
  * This file contains all the argument parameter data structure for operators.
  */
@@ -31,6 +32,8 @@ struct ParamBase {
  public:
   const std::vector<Tensor*>* input_tensor_ptrs() const { return nullptr; }
   std::vector<Tensor*>* output_tensor_ptrs() { return nullptr; }
+  ParamBase() = default;
+  virtual ~ParamBase(){};
 
  protected:
   std::shared_ptr<std::vector<const Tensor*>> input_tensor_ptrs_cache_{nullptr};
